@@ -1,0 +1,42 @@
+# Dockerfile for Next.js Frontend
+FROM node:18-alpine as builder
+
+WORKDIR /app
+
+# Install dependencies
+COPY package*.json ./
+RUN npm ci
+
+# Copy source
+COPY . .
+
+# Build
+RUN npm run build
+
+# Production stage
+FROM node:18-alpine
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+
+# Install runtime dependencies
+RUN npm install -g next@14.0.4
+
+# Copy built app from builder
+COPY --from=builder /app/.next /app/.next
+COPY --from=builder /app/public /app/public
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/next.config.js ./
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
+USER nextjs
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost:3000 || exit 1
+
+CMD ["npm", "start"]

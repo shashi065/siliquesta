@@ -1,0 +1,17 @@
+{
+  "name": "SILIQUESTA v2 — AI-Native Silicon Intelligence",
+  "short_name": "SILIQUESTA",
+  "description": "Enterprise AI-native EDA platform. Real physics. Real AI. Zero errors.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#020209",
+  "theme_color": "#00f5ff",
+  "orientation": "any",
+  "icons": [{"src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjMyIiBmaWxsPSIjMDIwMjA5Ii8+PHRleHQgeD0iOTYiIHk9IjEyNSIgZm9udC1zaXplPSIxMDgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiMwMGY1ZmYiPuKXtjwvdGV4dD48L3N2Zz4=","sizes":"192x192","type":"image/svg+xml"}],
+  "categories": ["productivity","utilities"],
+  "shortcuts": [
+    {"name":"Run Simulation","url":"./app.html?sim","description":"Launch simulation"},
+    {"name":"ADA Optimizer","url":"./app.html?optimizer","description":"Autonomous Design Agent"},
+    {"name":"AI Lab","url":"./app.html?ai-lab","description":"AI Laboratory"}
+  ]
+}

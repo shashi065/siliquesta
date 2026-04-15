@@ -1,0 +1,13 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/design/page": "app/design/page.js",
+  "/analyzer/page": "app/analyzer/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/optimizer/page": "app/optimizer/page.js",
+  "/ai-lab/page": "app/ai-lab/page.js",
+  "/results/page": "app/results/page.js",
+  "/page": "app/page.js",
+  "/projects/page": "app/projects/page.js",
+  "/auth/login/page": "app/auth/login/page.js",
+  "/auth/signup/page": "app/auth/signup/page.js"
+}

@@ -1,0 +1,61 @@
+{
+  "version": "1.0",
+  "timestamp": "20260413_213619",
+  "features": [
+    "wn",
+    "wp",
+    "vdd",
+    "temp"
+  ],
+  "outputs": [
+    "power",
+    "frequency",
+    "delay"
+  ],
+  "metrics": {
+    "power": {
+      "r2": 0.9922895847672255,
+      "rmse": 2.048161008020244,
+      "mape": 0.07064836385693214,
+      "n_trees": 300,
+      "max_depth": 7,
+      "feature_importance": {
+        "wn": 0.10359042882919312,
+        "wp": 0.09936955571174622,
+        "vdd": 0.7785160541534424,
+        "temp": 0.018523983657360077
+      }
+    },
+    "frequency": {
+      "r2": 1.0,
+      "rmse": 0.0,
+      "mape": 0.0,
+      "n_trees": 300,
+      "max_depth": 7,
+      "feature_importance": {
+        "wn": 0.0,
+        "wp": 0.0,
+        "vdd": 0.0,
+        "temp": 0.0
+      }
+    },
+    "delay": {
+      "r2": 0.9899664905292681,
+      "rmse": 0.001935965852117323,
+      "mape": 0.03962007295226527,
+      "n_trees": 300,
+      "max_depth": 7,
+      "feature_importance": {
+        "wn": 0.02402818389236927,
+        "wp": 0.020636945962905884,
+        "vdd": 0.9033606052398682,
+        "temp": 0.051974229514598846
+      }
+    }
+  },
+  "training_config": {
+    "n_estimators": 300,
+    "max_depth": 7,
+    "learning_rate": 0.1
+  }
+}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SILIQUESTA</string>
+    <string name="title_activity_main">SILIQUESTA</string>
+    <string name="package_name">io.siliquesta.app</string>
+    <string name="custom_url_scheme">io.siliquesta.app</string>
+</resources>

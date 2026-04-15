@@ -1,0 +1,23 @@
+{
+  "name": "siliquesta-mobile",
+  "version": "2.1.0",
+  "private": true,
+  "description": "SILIQUESTA Capacitor wrapper for Android and iOS",
+  "scripts": {
+    "doctor:android": "node doctor-android.mjs",
+    "sync": "cap sync",
+    "build": "npm run doctor:android && cap sync",
+    "open:android": "cap open android",
+    "open:ios": "cap open ios",
+    "build:android": "npm run doctor:android && cap sync android",
+    "build:ios": "cap sync ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.2.0"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/cli": "^6.2.0",
+    "@capacitor/ios": "^6.2.0"
+  }
+}

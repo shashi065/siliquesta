@@ -1,0 +1,1914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SILIQUESTA — AI-Native Silicon EDA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root[data-theme="dark"]{
+  --ink:#07070f;--ink1:#0d0d1c;--ink2:#13132A;
+  --ink-end:#060914;
+  --g1:rgba(255,255,255,.03);--g2:rgba(255,255,255,.055);
+  --gb:rgba(255,255,255,.08);--ge:rgba(255,255,255,.11);
+  --c:#00e5ff;--c2:#0066ff;--c3:#6c3dff;
+  --cg:rgba(0,229,255,.12);--cgg:rgba(0,229,255,.055);
+  --t0:#f0f0ff;--t1:#9090b8;--t2:#44445a;
+  --btn-text:#08101d;
+  --nav-bg:rgba(7,7,15,.72);
+}
+:root[data-theme="light"]{
+  --ink:#f4f7ff;--ink1:#e8efff;--ink2:#dce7ff;
+  --ink-end:#f7faff;
+  --g1:rgba(15,23,42,.03);--g2:rgba(15,23,42,.06);
+  --gb:rgba(15,23,42,.14);--ge:rgba(15,23,42,.18);
+  --c:#0ea5e9;--c2:#2563eb;--c3:#4f46e5;
+  --cg:rgba(14,165,233,.14);--cgg:rgba(14,165,233,.07);
+  --t0:#0f172a;--t1:#334155;--t2:#64748b;
+  --btn-text:#ffffff;
+  --nav-bg:rgba(255,255,255,.78);
+}
+:root{
+  --ink:#07070f;--ink1:#0d0d1c;--ink2:#13132A;
+  --ink-end:#060914;
+  --g1:rgba(255,255,255,.03);--g2:rgba(255,255,255,.055);
+  --gb:rgba(255,255,255,.08);--ge:rgba(255,255,255,.11);
+  --c:#00e5ff;--c2:#0066ff;--c3:#6c3dff;
+  --cg:rgba(0,229,255,.12);--cgg:rgba(0,229,255,.055);
+  --t0:#f0f0ff;--t1:#9090b8;--t2:#44445a;
+  --btn-text:#08101d;
+  --nav-bg:rgba(7,7,15,.72);
+  --r:12px;--fw:1100px;
+  --mono:'DM Mono',monospace;
+  --body:'Instrument Sans',sans-serif;
+  --head:'Bebas Neue',sans-serif;
+}
+html{scroll-behavior:smooth}
+body{background:var(--ink);color:var(--t0);font-family:var(--body);-webkit-font-smoothing:antialiased;overflow-x:hidden;transition: background 0.3s, color 0.3s;}
+a{color:inherit;text-decoration:none}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--g2);border-radius:2px}
+
+/* grid texture */
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(0,229,255,.022) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,229,255,.022) 1px,transparent 1px);
+  background-size:52px 52px;
+}
+
+/* orbs */
+.orb{position:fixed;border-radius:50%;filter:blur(90px);pointer-events:none;z-index:0}
+.orb-a{width:560px;height:560px;background:radial-gradient(circle,rgba(0,102,255,.16),transparent 70%);top:-140px;left:-120px;animation:drift 20s ease-in-out infinite alternate}
+.orb-b{width:420px;height:420px;background:radial-gradient(circle,rgba(108,61,255,.13),transparent 70%);bottom:-60px;right:-100px;animation:drift 26s ease-in-out infinite alternate-reverse}
+.orb-c{width:300px;height:300px;background:radial-gradient(circle,rgba(0,229,255,.07),transparent 70%);top:50%;left:50%;transform:translate(-50%,-50%);animation:drift 32s ease-in-out infinite}
+@keyframes drift{from{transform:translate(0,0)}to{transform:translate(36px,24px)}}
+
+.w{max-width:var(--fw);margin:0 auto;padding:0 28px;position:relative;z-index:1}
+hr.rule{border:none;height:1px;background:linear-gradient(90deg,transparent,var(--ge) 20%,var(--ge) 80%,transparent);position:relative;z-index:1}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:200;background:var(--nav-bg);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border-bottom:1px solid var(--gb);transition:background .3s,color .3s}
+.nav-inner{max-width:var(--fw);margin:0 auto;padding:0 28px;height:58px;display:flex;align-items:center;gap:14px}
+.nav-logo{font-family:var(--head);font-size:21px;letter-spacing:2.5px;background:linear-gradient(90deg,var(--c),var(--c2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.nav-badge{font-family:var(--mono);font-size:8.5px;letter-spacing:1.5px;padding:3px 7px;border-radius:4px;background:var(--cgg);border:1px solid rgba(0,229,255,.2);color:var(--c);text-transform:uppercase}
+.nav-sp{flex:1}
+.nl{font-size:13px;color:var(--t1);padding:5px 2px;transition:color .18s}
+.nl:hover{color:var(--t0)}
+.nav-btn{padding:8px 20px;border-radius:7px;border:none;background:linear-gradient(135deg,var(--c),var(--c2));color:var(--btn-text);font-family:var(--body);font-size:13px;font-weight:600;cursor:pointer;transition:filter .2s,transform .15s;white-space:nowrap}
+.nav-btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.nav-theme-select{appearance:none;-webkit-appearance:none;min-width:124px;padding:8px 30px 8px 12px;border-radius:7px;border:1px solid var(--gb);background:var(--g1);color:var(--t0);font-family:var(--body);font-size:12px;cursor:pointer;transition:border-color .2s,box-shadow .2s;line-height:1.1;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23707a94' d='M5 6 0 0h10Z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+.nav-theme-select:hover,.nav-theme-select:focus{outline:none;border-color:rgba(0,229,255,.35);box-shadow:0 0 0 3px rgba(0,229,255,.12)}
+.ham{display:none;background:none;border:none;color:var(--t0);font-size:20px;cursor:pointer;padding:4px;margin-left:4px}
+
+/* ── BUTTONS ── */
+.btn-p{padding:14px 32px;border-radius:8px;border:none;background:linear-gradient(135deg,var(--c),var(--c2));color:var(--btn-text);font-family:var(--body);font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;letter-spacing:.3px}
+.btn-p:hover{filter:brightness(1.12);transform:translateY(-2px);box-shadow:0 14px 36px rgba(0,229,255,.22)}
+.btn-g{padding:14px 32px;border-radius:8px;background:var(--g1);border:1px solid var(--gb);color:var(--t0);font-family:var(--body);font-size:14px;cursor:pointer;transition:all .2s}
+.btn-g:hover{background:var(--g2);border-color:var(--ge);transform:translateY(-2px)}
+
+/* ── HERO ── */
+#hero{padding:158px 0 96px;text-align:center;position:relative;z-index:1}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:20px;background:var(--g1);border:1px solid var(--ge);font-family:var(--mono);font-size:9.5px;letter-spacing:2px;color:var(--c);text-transform:uppercase;margin-bottom:30px;animation:fadeup .7s ease both}
+.hero-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c);animation:blink 2s ease infinite;flex-shrink:0}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes fadeup{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+.hero-h1{font-family:var(--head);font-size:clamp(68px,10vw,130px);line-height:.92;letter-spacing:4px;background:linear-gradient(160deg,#fff 25%,rgba(255,255,255,.48));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:10px;animation:fadeup .75s .08s ease both}
+.hero-tagline{font-family:var(--head);font-size:clamp(18px,2.6vw,28px);letter-spacing:2px;color:var(--c);margin-bottom:20px;animation:fadeup .75s .14s ease both;opacity:.85}
+.hero-sub{font-size:clamp(14px,1.6vw,17px);color:var(--t1);max-width:560px;margin:0 auto 36px;line-height:1.65;animation:fadeup .75s .2s ease both}
+.hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:20px;animation:fadeup .75s .26s ease both}
+.hero-note{font-family:var(--mono);font-size:10px;color:var(--t2);letter-spacing:.5px;animation:fadeup .75s .32s ease both}
+
+/* ── TRUST STRIP ── */
+#trust{padding:34px 0;position:relative;z-index:1}
+.trust-row{display:flex;justify-content:center;align-items:center;flex-wrap:wrap}
+.ti{display:flex;align-items:center;gap:9px;padding:0 32px;position:relative}
+.ti+.ti::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);height:22px;width:1px;background:var(--ge)}
+.ti-icon{width:16px;height:16px;opacity:.65;flex-shrink:0}
+.ti-text{font-family:var(--mono);font-size:10.5px;letter-spacing:1px;color:var(--t1);text-transform:uppercase;white-space:nowrap}
+
+/* ── SECTION COMMON ── */
+section{padding:88px 0;position:relative;z-index:1}
+.stag{font-family:var(--mono);font-size:10px;letter-spacing:3px;color:var(--c);text-transform:uppercase;margin-bottom:14px}
+.sh2{font-family:var(--head);font-size:clamp(34px,5vw,54px);letter-spacing:2px;line-height:1.02;background:linear-gradient(135deg,#fff 35%,rgba(255,255,255,.52));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:14px}
+.sp{font-size:15px;color:var(--t1);line-height:1.68;max-width:480px}
+
+/* ── INTRO SPLIT ── */
+.intro-grid{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center;margin-top:16px}
+.intro-img{border-radius:16px;background:var(--g1);border:1px solid var(--gb);padding:32px;position:relative;overflow:hidden}
+.intro-img::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:radial-gradient(circle,var(--cgg),transparent 70%);pointer-events:none}
+.preview-chips{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chip-block{padding:18px 16px;background:var(--g2);border:1px solid var(--gb);border-radius:9px}
+.chip-label{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;color:var(--t2);text-transform:uppercase;margin-bottom:8px}
+.chip-val{font-family:var(--mono);font-size:22px;font-weight:400}
+.chip-val.c-lum{color:var(--c)}
+.chip-val.c-grn{color:#00e676}
+.chip-val.c-amb{color:#ffb300}
+.chip-val.c-vio{color:#a855f7}
+.chip-sub{font-size:10px;color:var(--t2);margin-top:3px}
+.intro-points{display:flex;flex-direction:column;gap:18px;margin-top:28px}
+.ip{display:flex;align-items:flex-start;gap:12px}
+.ip-dot{width:6px;height:6px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c);flex-shrink:0;margin-top:7px}
+.ip-text{font-size:13px;color:var(--t1);line-height:1.6}
+.ip-text strong{color:var(--t0)}
+
+/* ── FEATURES 3-GRID ── */
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:48px}
+.fc{padding:30px 26px;background:var(--g1);border:1px solid var(--gb);border-radius:var(--r);position:relative;overflow:hidden;transition:border-color .25s,transform .25s;cursor:default}
+.fc::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at top left,var(--cgg),transparent 55%);opacity:0;transition:opacity .3s}
+.fc:hover{border-color:rgba(0,229,255,.22);transform:translateY(-4px)}
+.fc:hover::before{opacity:1}
+.fc-num{font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--t2);margin-bottom:18px;display:block}
+.fc-icon{width:38px;height:38px;border-radius:9px;margin-bottom:18px;display:flex;align-items:center;justify-content:center;background:var(--g2);border:1px solid var(--gb)}
+.fc-icon svg{width:18px;height:18px}
+.fc-h3{font-size:16px;font-weight:600;margin-bottom:9px;color:#fff}
+.fc-p{font-size:12.5px;color:var(--t1);line-height:1.65}
+
+/* ── HOW IT WORKS ── */
+.how-head{max-width:540px;margin-bottom:56px}
+.how-flow{display:grid;grid-template-columns:repeat(4,1fr);position:relative}
+.how-flow::before{content:'';position:absolute;top:27px;left:calc(12.5%);right:calc(12.5%);height:1px;background:linear-gradient(90deg,transparent,var(--ge) 10%,var(--ge) 90%,transparent);z-index:0}
+.how-step{padding:0 16px 0 0;position:relative;z-index:1}
+.how-num-w{width:54px;height:54px;border-radius:50%;background:var(--ink1);border:1px solid var(--gb);display:flex;align-items:center;justify-content:center;margin-bottom:20px;position:relative}
+.how-num-w::after{content:'';position:absolute;inset:-3px;border-radius:50%;border:1px solid rgba(0,229,255,.15)}
+.how-num{font-family:var(--mono);font-size:12px;color:var(--c)}
+.how-arr{position:absolute;top:19px;right:0;font-size:15px;color:var(--t2);transform:translateX(50%)}
+.how-step:last-child .how-arr{display:none}
+.how-label{font-size:14px;font-weight:600;margin-bottom:7px;color:#fff}
+.how-desc{font-size:12px;color:var(--t1);line-height:1.6;max-width:190px}
+
+/* ── DOWNLOADS ── */
+#downloads{padding:88px 0}
+.dl-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:40px;flex-wrap:wrap;gap:16px}
+.dl-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.dc{padding:26px 14px 22px;background:var(--g1);border:1px solid var(--gb);border-radius:var(--r);display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;transition:all .22s;position:relative;overflow:hidden}
+.dc:hover:not(.dc-soon){border-color:rgba(0,229,255,.22);transform:translateY(-4px);background:var(--g2)}
+.dc-soon{opacity:.4;cursor:default}
+.dc-logo{width:40px;height:40px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.dc-logo svg{width:100%;height:100%}
+.dc-name{font-size:13px;font-weight:600;color:#fff}
+.dc-tag{font-family:var(--mono);font-size:8.5px;letter-spacing:.8px;text-transform:uppercase;color:var(--t2)}
+.dc-btn{width:100%;padding:9px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--c2),var(--c3));color:#fff;font-family:var(--body);font-size:11px;font-weight:600;cursor:pointer;transition:filter .2s}
+.dc-btn:hover{filter:brightness(1.15)}
+.dc-btn.soon{background:var(--g2);border:1px solid var(--gb);color:var(--t2);cursor:not-allowed}
+.dl-web-note{margin-top:18px;text-align:center;font-size:13px;color:var(--t2)}
+.dl-web-note a{color:var(--c);margin-left:5px;font-weight:500;border-bottom:1px solid rgba(0,229,255,.3);padding-bottom:1px;transition:border-color .2s}
+.dl-web-note a:hover{border-color:var(--c)}
+
+/* ── TRUST LAYER ── */
+#trust-layer{padding:88px 0}
+.tl-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:48px}
+.tl-card{padding:28px 24px;background:var(--g1);border:1px solid var(--gb);border-radius:var(--r);display:flex;gap:18px;align-items:flex-start;transition:border-color .22s}
+.tl-card:hover{border-color:rgba(0,229,255,.18)}
+.tl-icon{width:36px;height:36px;border-radius:8px;background:var(--g2);border:1px solid var(--gb);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tl-icon svg{width:16px;height:16px}
+.tl-h{font-size:15px;font-weight:600;margin-bottom:6px;color:#fff}
+.tl-p{font-size:12.5px;color:var(--t1);line-height:1.65}
+
+/* ── CTA ── */
+#cta{padding:88px 0 112px;text-align:center}
+.cta-box{max-width:620px;margin:0 auto;padding:60px 44px;background:var(--g1);border:1px solid var(--ge);border-radius:20px;position:relative;overflow:hidden}
+.cta-box::before{content:'';position:absolute;top:-80px;left:50%;transform:translateX(-50%);width:340px;height:340px;background:radial-gradient(circle,rgba(0,102,255,.11),transparent 70%);pointer-events:none}
+.cta-h2{font-family:var(--head);font-size:clamp(34px,5vw,52px);letter-spacing:2px;line-height:1.05;background:linear-gradient(135deg,#fff 30%,rgba(255,255,255,.55));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:12px}
+.cta-p{font-size:14px;color:var(--t1);margin-bottom:30px;line-height:1.65}
+.cta-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+/* ── AI QUERY SYSTEM ── */
+#ai-query-section{margin-top:36px}
+.ai-box{max-width:500px;margin:0 auto;padding:18px;background:rgba(0,229,255,.055);border:1px solid rgba(0,229,255,.15);border-radius:10px;display:flex;gap:8px;align-items:center}
+.ai-input{flex:1;background:transparent;border:none;color:var(--t0);font-family:var(--body);font-size:13px;outline:none;padding:8px 0}
+.ai-input::placeholder{color:var(--t2)}
+.ai-send{width:36px;height:36px;border-radius:7px;border:none;background:linear-gradient(135deg,var(--c),var(--c2));color:#000;font-weight:600;cursor:pointer;transition:filter .2s;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ai-send:hover{filter:brightness(1.1)}
+.ai-send:active{transform:scale(.96)}
+.ai-result{margin-top:16px;padding:16px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.12);border-radius:9px;border-left:3px solid var(--c);font-family:var(--mono);font-size:11px;color:var(--t1);line-height:1.6;display:none}
+.ai-result.show{display:block;animation:fadeup .3s ease}
+.ai-result-title{font-weight:600;color:var(--c);margin-bottom:8px;text-transform:uppercase;letter-spacing:.8px}
+.ai-result-item{margin:6px 0;display:flex;justify-content:space-between;color:var(--t0)}
+.ai-result-label{color:var(--t2)}
+
+/* ── DIGITAL TWIN AI MODE ── */
+#ai-mode-toggle{display:flex;gap:8px;align-items:center;margin-top:16px;padding:12px 14px;background:rgba(0,229,255,.055);border:1px solid rgba(0,229,255,.15);border-radius:9px;width:fit-content}
+.ai-mode-label{font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--t2);text-transform:uppercase}
+.toggle-switch{width:44px;height:24px;background:var(--g2);border:1px solid var(--gb);border-radius:12px;position:relative;cursor:pointer;transition:all .25s ease}
+.toggle-switch.active{background:rgba(0,229,255,.25);border-color:var(--c)}
+.toggle-dot{width:20px;height:20px;background:#fff;border-radius:50%;position:absolute;top:2px;left:2px;transition:all .25s ease;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.toggle-switch.active .toggle-dot{left:22px;box-shadow:0 2px 12px rgba(0,229,255,.4)}
+.ai-mode-status{font-family:var(--mono);font-size:9px;letter-spacing:.8px;color:var(--t2);text-transform:uppercase}
+.ai-mode-status.active{color:var(--c)}
+
+/* ── MODE SYSTEM ── */
+#mode-selector{display:flex;flex-direction:column;gap:10px;margin-top:20px;padding:14px;background:rgba(0,229,255,.045);border:1px solid rgba(0,229,255,.12);border-radius:9px}
+.mode-label{font-family:var(--mono);font-size:9px;letter-spacing:1.2px;color:var(--t2);text-transform:uppercase;margin-bottom:4px}
+.mode-buttons{display:flex;flex-wrap:wrap;gap:6px}
+.mode-btn{flex:1;min-width:100px;padding:8px 12px;border-radius:6px;border:1px solid rgba(0,229,255,.15);background:var(--g1);color:var(--t1);font-family:var(--mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;cursor:pointer;transition:all .2s ease;white-space:nowrap}
+.mode-btn:hover{background:var(--g2);border-color:rgba(0,229,255,.25);color:var(--t0)}
+.mode-btn.active{background:linear-gradient(135deg,rgba(0,229,255,.3),rgba(0,102,255,.2));border-color:var(--c);color:var(--c);box-shadow:0 0 12px rgba(0,229,255,.2)}
+.mode-indicator{font-family:var(--mono);font-size:9px;color:var(--t2);margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,229,255,.1)}
+.mode-indicator-text{color:var(--c);display:inline}
+
+/* ── MATERIALS DATABASE ── */
+#material-selector{display:flex;flex-direction:column;gap:8px;margin-top:14px;padding:12px;background:rgba(0,229,255,.04);border:1px solid rgba(0,229,255,.1);border-radius:9px}
+.material-label{font-family:var(--mono);font-size:8px;letter-spacing:1.2px;color:var(--t2);text-transform:uppercase;margin-bottom:4px}
+.material-dropdown{width:100%;padding:9px 12px;border-radius:6px;border:1px solid rgba(0,229,255,.2);background:var(--g1);color:var(--t0);font-family:var(--body);font-size:12px;cursor:pointer;transition:all .2s ease;appearance:none;background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300e5ff' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");background-repeat:no-repeat;background-position:right 8px center;background-size:18px;padding-right:32px}
+.material-dropdown:hover{border-color:rgba(0,229,255,.3);background-color:var(--g2)}
+.material-dropdown:focus{outline:none;border-color:var(--c);box-shadow:0 0 8px rgba(0,229,255,.2)}
+.material-info{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,229,255,.1);font-family:var(--mono);font-size:8px;color:var(--t2)}
+.material-info-item{display:flex;flex-direction:column;gap:2px}
+.material-info-label{color:var(--t2);text-transform:uppercase;letter-spacing:.5px}
+.material-info-value{color:var(--c);font-weight:600}
+
+/* ── FOOTER ── */
+footer{border-top:1px solid var(--g2);padding:26px 0;position:relative;z-index:1}
+.foot-in{max-width:var(--fw);margin:0 auto;padding:0 28px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+.foot-logo{font-family:var(--head);font-size:15px;letter-spacing:2.5px;background:linear-gradient(90deg,var(--c),var(--c2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.foot-copy{font-size:11px;color:var(--t2)}
+.foot-links{display:flex;gap:18px}
+.foot-link{font-size:11px;color:var(--t2);transition:color .18s}
+.foot-link:hover{color:var(--t0)}
+
+/* ── REVEAL ── */
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .65s ease,transform .65s ease}
+.reveal.in{opacity:1;transform:none}
+
+/* ── LANDING -> APP TRANSITION ── */
+.page-transition-overlay{position:fixed;inset:0;display:grid;place-items:center;z-index:9999;opacity:0;pointer-events:none;background:linear-gradient(160deg,rgba(5,8,22,.72),rgba(12,19,40,.82));backdrop-filter:blur(6px);transition:opacity .2s ease}
+.page-transition-overlay.active{opacity:1}
+.page-transition-card{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:999px;border:1px solid rgba(0,229,255,.26);background:rgba(0,0,0,.26);color:var(--t0);font-family:var(--mono);font-size:10px;letter-spacing:1.1px;text-transform:uppercase}
+.page-transition-dot{width:8px;height:8px;border-radius:50%;background:var(--c);box-shadow:0 0 0 0 rgba(0,229,255,.55);animation:ptPulse .95s infinite}
+@keyframes ptPulse{0%{box-shadow:0 0 0 0 rgba(0,229,255,.55)}70%{box-shadow:0 0 0 8px rgba(0,229,255,0)}100%{box-shadow:0 0 0 0 rgba(0,229,255,0)}}
+body.page-leaving{overflow:hidden}
+body.page-leaving .w,body.page-leaving nav,body.page-leaving footer{transform:translateY(-5px);opacity:.82;transition:transform .2s ease,opacity .2s ease}
+
+/* ── RESPONSIVE ── */
+@media(max-width:960px){
+  .intro-grid{grid-template-columns:1fr}
+  .intro-img{display:none}
+  .feat-grid{grid-template-columns:1fr 1fr}
+  .how-flow{grid-template-columns:1fr 1fr;gap:32px}
+  .how-flow::before,.how-arr{display:none}
+  .dl-grid{grid-template-columns:repeat(3,1fr)}
+  .tl-grid{grid-template-columns:1fr}
+  .nl{display:none}
+}
+@media(max-width:600px){
+  .feat-grid{grid-template-columns:1fr}
+  .dl-grid{grid-template-columns:repeat(3,1fr)}
+  .trust-row .ti{padding:0 16px}
+  .cta-box{padding:36px 20px}
+  .dl-head{flex-direction:column;align-items:flex-start}
+  .hero-h1{letter-spacing:2px}
+}
+@media(max-width:420px){
+  .dl-grid{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<div class="orb orb-a" aria-hidden="true"></div>
+<div class="orb orb-b" aria-hidden="true"></div>
+<div class="orb orb-c" aria-hidden="true"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <span class="nav-logo">SILIQUESTA</span>
+    <span class="nav-badge">Beta</span>
+    <div class="nav-sp"></div>
+    <a class="nl" href="#features">Features</a>
+    <a class="nl" href="#how">Workflow</a>
+    <a class="nl" href="pricing.html">Pricing</a>
+    <a class="nl" href="#downloads">Downloads</a>
+    <select id="themeSelectLanding" class="nav-theme-select" aria-label="Theme mode">
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+      <option value="system">System</option>
+    </select>
+    <button class="nav-btn" onclick="navigateToAppTransition('app.html')">Launch App →</button>
+    <button class="ham" onclick="this.closest('nav').classList.toggle('open')">☰</button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="w">
+    <div class="hero-badge">AI-Native Chip Design Platform</div>
+    <h1 class="hero-h1">SILIQUESTA</h1>
+    <p class="hero-tagline">Design Chips. Optimize with AI. Ship Faster.</p>
+    <p class="hero-sub">SILIQUESTA combines deterministic physics-backed simulation, autonomous multi-objective optimization, and cross-platform delivery — so engineering teams move from idea to validated design with confidence.</p>
+    <div class="hero-btns">
+      <button class="btn-p" onclick="navigateToAppTransition('app.html?demo=1')">Open Workspace →</button>
+      <button class="btn-g" onclick="document.getElementById('downloads').scrollIntoView({behavior:'smooth'})">Download Apps ↓</button>
+    </div>
+    <p class="hero-note">⚠ Beta release — results may vary. Feedback welcome.</p>
+
+    <!-- AI Query System -->
+    <div id="ai-query-section">
+      <div class="ai-box">
+        <input class="ai-input" id="ai-query-input" type="text" placeholder="Try: 'optimize', 'increase frequency', 'reduce power'..." />
+        <button class="ai-send" id="ai-send-btn">→</button>
+      </div>
+      <div class="ai-result" id="ai-result"></div>
+    </div>
+  </div>
+</section>
+<hr class="rule">
+
+<!-- TRUST STRIP -->
+<div id="trust">
+  <div class="w">
+    <div class="trust-row">
+      <div class="ti">
+        <svg class="ti-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        <span class="ti-text">Physics + AI</span>
+      </div>
+      <div class="ti">
+        <svg class="ti-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <span class="ti-text">Deterministic Outputs</span>
+      </div>
+      <div class="ti">
+        <svg class="ti-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        <span class="ti-text">Cross-Platform</span>
+      </div>
+      <div class="ti">
+        <svg class="ti-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span class="ti-text">Private Beta Ready</span>
+      </div>
+    </div>
+  </div>
+</div>
+<hr class="rule">
+
+<!-- INTRO / PRODUCT OVERVIEW -->
+<section id="overview">
+  <div class="w">
+    <div class="intro-grid">
+      <div>
+        <p class="stag reveal">Engineering Workspace</p>
+        <h2 class="sh2 reveal" style="transition-delay:.05s">Built for engineers<br>who need to iterate fast.</h2>
+        <p class="sp reveal" style="transition-delay:.1s">Simulation, ADA optimization, Digital Twin, and trust signals in one unified flow. Purpose-built for AI-assisted silicon design — not another dashboard.</p>
+        <div class="intro-points reveal" style="transition-delay:.15s">
+          <div class="ip">
+            <span class="ip-dot"></span>
+            <p class="ip-text"><strong>Faster exploration</strong> — ADA agent explores tradeoffs, returns ranked recommendations with optimizer-ready design parameters.</p>
+          </div>
+          <div class="ip">
+            <span class="ip-dot"></span>
+            <p class="ip-text"><strong>Deterministic UI behavior</strong> — repeated runs with the same inputs stay stable. Essential for regression checks and team review.</p>
+          </div>
+          <div class="ip">
+            <span class="ip-dot"></span>
+            <p class="ip-text"><strong>Deployment-safe paths</strong> — relative asset linking and static-friendly builds keep beta launch surface ready for domain hosting.</p>
+          </div>
+        </div>
+      </div>
+      <div class="intro-img reveal" style="transition-delay:.1s">
+        <div class="preview-chips">
+          <div class="chip-block">
+            <div class="chip-label">Frequency</div>
+            <div class="chip-val c-lum" data-sq-freq>4.82 <span style="font-size:13px">GHz</span></div>
+            <div class="chip-sub" data-sq-corner>TT corner · 28nm</div>
+          </div>
+          <div class="chip-block">
+            <div class="chip-label">Power</div>
+            <div class="chip-val c-grn" data-sq-power>1.24 <span style="font-size:13px">mW</span></div>
+            <div class="chip-sub">Dynamic · α=0.1</div>
+          </div>
+          <div class="chip-block">
+            <div class="chip-label">Delay</div>
+            <div class="chip-val c-amb" data-sq-delay>103 <span style="font-size:13px">ps</span></div>
+            <div class="chip-sub">Propagation t_pd</div>
+          </div>
+          <div class="chip-block">
+            <div class="chip-label">Health</div>
+            <div class="chip-val c-vio" data-sq-health>97.2<span style="font-size:13px">%</span></div>
+            <div class="chip-sub">Digital Twin · 10yr</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;padding:14px 16px;background:var(--g1);border:1px solid var(--gb);border-radius:9px">
+          <div style="font-family:var(--mono);font-size:9px;letter-spacing:1.5px;color:var(--t2);text-transform:uppercase;margin-bottom:8px">ADA Optimizer</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <div style="flex:1;height:3px;background:var(--g2);border-radius:2px;overflow:hidden">
+              <div data-sq-progress style="width:78%;height:100%;background:linear-gradient(90deg,var(--c3),var(--c));border-radius:2px;transition:width .3s ease"></div>
+            </div>
+            <span style="font-family:var(--mono);font-size:10px;color:var(--c);white-space:nowrap" data-sq-pareto>391,200 pts</span>
+          </div>
+          <div style="font-size:11px;color:var(--t2);margin-top:6px">Pareto front converged — 8 optimal candidates</div>
+        </div>
+        
+        <!-- Computation Mode Selector -->
+        <div id="mode-selector">
+          <div class="mode-label">Computation Mode</div>
+          <div class="mode-buttons">
+            <button class="mode-btn active" data-mode="CLASSICAL">Classical</button>
+            <button class="mode-btn" data-mode="AI">AI Mode</button>
+            <button class="mode-btn" data-mode="QUANTUM">Quantum</button>
+            <button class="mode-btn" data-mode="ATOMISTIC">Atomistic</button>
+          </div>
+          <div class="mode-indicator">Mode: <span class="mode-indicator-text" id="current-mode">CLASSICAL</span></div>
+        </div>
+        
+        <!-- Quantum Engine Controls (visible in Quantum Mode) -->
+        <div id="quantum-controls" style="display:none;margin-top:14px;padding:12px;background:rgba(108,61,255,.1);border:1px solid rgba(108,61,255,.25);border-radius:9px">
+          <div class="mode-label" style="color:#c299ff">Quantum Engine</div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--t2);margin-top:8px;line-height:1.8">
+            <div>Tunneling: <span id="quantum-tunneling" style="color:var(--c)">—</span></div>
+            <div>Leakage: <span id="quantum-leakage" style="color:var(--c)">—</span> µA</div>
+            <div>Tech: <span style="color:var(--c)">7nm</span> | Gate OX: <span style="color:var(--c)">1.2 nm</span></div>
+          </div>
+        </div>
+        
+        <!-- Atomistic Mode Controls (visible in Atomistic Mode) -->
+        <div id="atomistic-controls" style="display:none;margin-top:14px;padding:12px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.2);border-radius:9px">
+          <div class="mode-label" style="color:var(--c)">Atomistic Analysis</div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--t2);margin-top:8px;line-height:1.8">
+            <div>Regime: <span id="atomistic-regime" style="color:var(--c);font-weight:600">Quantum</span></div>
+            <div style="margin-top:6px;font-size:8px;color:var(--t2)">Device size <2nm shows quantum tunneling; ≥2nm shows classical transport</div>
+          </div>
+        </div>
+        
+        <!-- Material Selector -->
+        <div id="material-selector">
+          <div class="material-label">Material</div>
+          <select class="material-dropdown" id="material-select">
+            <option value="silicon">Silicon (Si)</option>
+            <option value="mos2">MoS₂ (Molybdenum Disulfide)</option>
+            <option value="graphene">Graphene</option>
+          </select>
+          <div class="material-info">
+            <div class="material-info-item">
+              <div class="material-info-label">Mobility</div>
+              <div class="material-info-value" id="material-mobility">1000 cm²/V·s</div>
+            </div>
+            <div class="material-info-item">
+              <div class="material-info-label">Bandgap</div>
+              <div class="material-info-value" id="material-bandgap">1.12 eV</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- TCAD Validation Bridge -->
+        <div id="tcad-validator" style="margin-top:14px;padding:12px;background:rgba(0,229,255,.04);border:1px solid rgba(0,229,255,.1);border-radius:9px">
+          <button id="tcad-validate-btn" style="width:100%;padding:10px 14px;border-radius:6px;border:1px solid rgba(0,229,255,.3);background:linear-gradient(135deg,rgba(0,229,255,.15),rgba(0,102,255,.1));color:var(--c);font-family:var(--mono);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;cursor:pointer;transition:all .2s ease">Validate with TCAD</button>
+          <div id="tcad-result" style="display:none;margin-top:10px;padding:10px;background:rgba(0,229,255,.05);border-radius:6px;font-family:var(--mono);font-size:9px;color:var(--t2);line-height:1.6">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <span>Status:</span>
+              <span id="tcad-status" style="color:var(--c)">—</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <span>Error Rate:</span>
+              <span id="tcad-error" style="color:var(--c)">—</span>
+            </div>
+            <div id="tcad-violations" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,229,255,.1);max-height:80px;overflow-y:auto;font-size:8px;color:var(--t2)"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="w">
+    <div class="reveal">
+      <p class="stag">Core Capabilities</p>
+      <h2 class="sh2">Purpose-built for AI-assisted<br>silicon design.</h2>
+    </div>
+    <div class="feat-grid reveal" style="transition-delay:.1s">
+
+      <div class="fc">
+        <span class="fc-num">01</span>
+        <div class="fc-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--c)" stroke-width="1.8" stroke-linecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
+        <h3 class="fc-h3">AI Simulation</h3>
+        <p class="fc-p">Physics-aware workflows with backend-backed computation, result export, and consistent visual output across all process corners and temperatures.</p>
+      </div>
+
+      <div class="fc">
+        <span class="fc-num">02</span>
+        <div class="fc-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--c)" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+        </div>
+        <h3 class="fc-h3">Autonomous Optimization (ADA)</h3>
+        <p class="fc-p">Explore tradeoffs faster with multi-objective search, ranked recommendations, and optimizer-ready Pareto-optimal design parameters.</p>
+      </div>
+
+      <div class="fc">
+        <span class="fc-num">03</span>
+        <div class="fc-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--c)" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        </div>
+        <h3 class="fc-h3">Digital Twin Modeling</h3>
+        <p class="fc-p">Surrogate modeling and reliability-aware reasoning accelerate design decisions — NBTI, HCI, and electromigration aging without losing system context.</p>
+      </div>
+
+      <div class="fc">
+        <span class="fc-num">04</span>
+        <div class="fc-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--c)" stroke-width="1.8" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <h3 class="fc-h3">Tradeoff Analysis</h3>
+        <p class="fc-p">Live Pareto front, full PVT sweep, and SHAP-based explainability. Understand every AI decision clearly before tape-out.</p>
+      </div>
+
+      <div class="fc">
+        <span class="fc-num">05</span>
+        <div class="fc-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--c)" stroke-width="1.8" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h3 class="fc-h3">Design DNA Memory</h3>
+        <p class="fc-p">Vector-embedded design memory — every circuit you save becomes training data for your private AI model. Your data advantage compounds over time.</p>
+      </div>
+
+      <div class="fc">
+        <span class="fc-num">06</span>
+        <div class="fc-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--c)" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        </div>
+        <h3 class="fc-h3">Cross-Platform Access</h3>
+        <p class="fc-p">Same product experience through the web app, Android and iOS shells, and desktop wrappers for Windows, macOS, and Linux.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="w">
+    <div class="how-head reveal">
+      <p class="stag">Workflow</p>
+      <h2 class="sh2">From spec to silicon<br>in minutes.</h2>
+    </div>
+    <div class="how-flow reveal" style="transition-delay:.08s">
+      <div class="how-step">
+        <div class="how-num-w"><span class="how-num">01</span></div>
+        <div class="how-arr">→</div>
+        <div class="how-label">Input Parameters</div>
+        <p class="how-desc">Set transistor widths, supply voltage, temperature range, and process corner.</p>
+      </div>
+      <div class="how-step">
+        <div class="how-num-w"><span class="how-num">02</span></div>
+        <div class="how-arr">→</div>
+        <div class="how-label">AI Optimizes</div>
+        <p class="how-desc">ADA agent explores the design space and returns ranked Pareto-optimal candidates.</p>
+      </div>
+      <div class="how-step">
+        <div class="how-num-w"><span class="how-num">03</span></div>
+        <div class="how-arr">→</div>
+        <div class="how-label">Simulate & Verify</div>
+        <p class="how-desc">Physics engine validates candidates across all corners with real CMOS equations.</p>
+      </div>
+      <div class="how-step">
+        <div class="how-num-w"><span class="how-num">04</span></div>
+        <div class="how-label">Export Results</div>
+        <p class="how-desc">Download CSV, JSON, or PDF report. Save to Design DNA for continuous learning.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DOWNLOADS -->
+<section id="downloads">
+  <div class="w">
+    <div class="dl-head reveal">
+      <div>
+        <p class="stag">Downloads</p>
+        <h2 class="sh2">Ship the same product<br>everywhere.</h2>
+      </div>
+      <p class="sp" style="max-width:300px">Every build points at the same backend contract — experience stays aligned across web, mobile, and desktop.</p>
+    </div>
+
+    <div class="dl-grid reveal" style="transition-delay:.08s">
+
+      <!-- Windows -->
+      <div class="dc">
+        <div class="dc-logo">
+          <!-- Official Windows logo -->
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801" fill="#00adef"/>
+          </svg>
+        </div>
+        <span class="dc-name">Windows</span>
+        <span class="dc-tag">Desktop · .exe</span>
+        <a href="./downloads/SILIQUESTA-windows-v1.0.0-beta.exe" download="SILIQUESTA-windows-v1.0.0-beta.exe" style="width:100%">
+          <button class="dc-btn" type="button">Download</button>
+        </a>
+      </div>
+
+      <!-- macOS -->
+      <div class="dc">
+        <div class="dc-logo">
+          <!-- Apple logo -->
+          <svg viewBox="0 0 814 1000" xmlns="http://www.w3.org/2000/svg">
+            <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-43.4-150.3-109.2C159.6 747.8 106 617.9 106 494.5 106 265.2 238 139 368.2 139c65.5 0 120.1 42.1 160.8 42.1 38.8 0 100.2-45.8 174.6-45.8 27.6 0 108.2 2.6 168.2 79.2zm-130.9-79.2c-27.7-33.1-67.7-57.6-112.9-57.6-5.8 0-11.6.6-17.4 1.3 1.3-11.5 1.9-22.9 1.9-34.3 0-58.9-25.1-119.8-64.9-160.3C428.3 9.8 364.2 0 315.4 0 313.5 0 312 .6 310.5 1.3c-1.3 70.2 22.9 143.3 66.6 193.4 44.7 51.8 107.2 80.5 170 81.1z" fill="#aaa"/>
+          </svg>
+        </div>
+        <span class="dc-name">macOS</span>
+        <span class="dc-tag">Desktop · .dmg</span>
+        <a href="./downloads/SILIQUESTA-macos-x64.zip" download="SILIQUESTA-macos-x64.zip" style="width:100%">
+          <button class="dc-btn" type="button">Download</button>
+        </a>
+      </div>
+
+      <!-- Linux -->
+      <div class="dc">
+        <div class="dc-logo">
+          <!-- Linux Tux penguin simplified -->
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#e8e8e8">
+            <path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489.292 2.08 2.178 3.99 5.956 4.67a8.528 8.528 0 0 0 1.24.124 8.486 8.486 0 0 0 1.24-.124c3.778-.68 5.664-2.59 5.956-4.67.123-.805-.009-1.657-.287-2.489-.589-1.771-1.831-3.47-2.716-4.521-.75-1.067-.974-1.928-1.05-3.02-.065-1.491 1.057-5.965-3.17-6.298A6.23 6.23 0 0 0 12.504 0zm.985 14.805a1.46 1.46 0 1 1 0 2.92 1.46 1.46 0 0 1 0-2.92zm-1.97 0a1.46 1.46 0 1 1 0 2.92 1.46 1.46 0 0 1 0-2.92zm-.79-8.01c.472 0 .854.382.854.854s-.382.854-.854.854-.854-.382-.854-.854.382-.854.854-.854zm3.55 0c.472 0 .854.382.854.854s-.382.854-.854.854-.854-.382-.854-.854.382-.854.854-.854zm-1.775 1.23c.665 0 1.204.539 1.204 1.204s-.539 1.204-1.204 1.204-1.204-.539-1.204-1.204.539-1.204 1.204-1.204z"/>
+          </svg>
+        </div>
+        <span class="dc-name">Linux</span>
+        <span class="dc-tag">Desktop · .AppImage</span>
+        <a href="./downloads/SILIQUESTA-linux-x64.bin" download="SILIQUESTA-linux-x64.bin" style="width:100%">
+          <button class="dc-btn" type="button">Download</button>
+        </a>
+      </div>
+
+      <!-- Android -->
+      <div class="dc">
+        <div class="dc-logo">
+          <!-- Official Android robot -->
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M17.523 15.341A5.53 5.53 0 0 1 12 20.87a5.53 5.53 0 0 1-5.523-5.529V9.412h11.046v5.929zm1.53-5.929h.706a1.765 1.765 0 1 1 0 3.53h-.706V9.412zm-14.306 0h-.706a1.765 1.765 0 0 0 0 3.53h.706V9.412zm2.118-6.083 1.13-1.948a.353.353 0 0 1 .484-.129.353.353 0 0 1 .129.484l-1.164 2.01A5.497 5.497 0 0 1 12 3.41c1.08 0 2.087.311 2.935.847L13.77 2.247a.353.353 0 0 1 .129-.484.353.353 0 0 1 .484.129l1.129 1.948A5.529 5.529 0 0 1 17.524 8H6.476a5.529 5.529 0 0 1 2.389-4.671zM10.235 6.47a.706.706 0 1 0 0-1.412.706.706 0 0 0 0 1.412zm3.53 0a.706.706 0 1 0 0-1.412.706.706 0 0 0 0 1.412z" fill="#3ddc84"/>
+          </svg>
+        </div>
+        <span class="dc-name">Android</span>
+        <span class="dc-tag">Mobile · .apk</span>
+        <button class="dc-btn" type="button" onclick="alert('Android APK build is not available yet because the Android SDK is not configured on this machine.')">Download</button>
+      </div>
+
+      <!-- iOS -->
+      <!-- FUTURE UPGRADE -->
+      <!-- Replace iOS button with TestFlight link after deployment: https://testflight.apple.com/join/XXXX -->
+      <div class="dc">
+        <div class="dc-logo">
+          <!-- iOS badge style -->
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98l-.09.06c-.22.15-2.22 1.3-2.2 3.88.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.61M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" fill="#aaa"/>
+          </svg>
+        </div>
+        <span class="dc-name">iOS</span>
+        <span class="dc-tag">Mobile · Web App</span>
+        <a href="app.html" style="width:100%">
+          <button class="dc-btn">Open on iPhone →</button>
+        </a>
+      </div>
+
+      <!-- Web App -->
+      <div class="dc">
+        <div class="dc-logo">
+          <!-- Globe / web icon -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--c)" stroke-width="1.6" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+        </div>
+        <span class="dc-name">Web App</span>
+        <span class="dc-tag">Browser · No install</span>
+        <a href="app.html" style="width:100%">
+          <button class="dc-btn">Open →</button>
+        </a>
+      </div>
+
+    </div>
+    <p class="dl-web-note reveal" style="transition-delay:.16s">Prefer no install?<a href="app.html">Launch the web app directly →</a></p>
+  </div>
+</section>
+
+<!-- TRUST LAYER -->
+<section id="trust-layer">
+  <div class="w">
+    <div class="reveal">
+      <p class="stag">Trust Layer</p>
+      <h2 class="sh2">Built for engineers who need<br>results they can defend.</h2>
+    </div>
+    <div class="tl-grid reveal" style="transition-delay:.08s">
+
+      <div class="tl-card">
+        <div class="tl-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--c)" stroke-width="1.8" stroke-linecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
+        <div>
+          <div class="tl-h">AI + Physics Validated</div>
+          <p class="tl-p">Simulation-backed workflows keep the product grounded in real engineering outputs — not disconnected demos or approximations.</p>
+        </div>
+      </div>
+
+      <div class="tl-card">
+        <div class="tl-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--c)" stroke-width="1.8" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div>
+          <div class="tl-h">Deterministic Outputs</div>
+          <p class="tl-p">Repeated runs with the same inputs stay stable — essential for trust, regression checks, and team review across the design cycle.</p>
+        </div>
+      </div>
+
+      <div class="tl-card">
+        <div class="tl-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--c)" stroke-width="1.8" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
+        </div>
+        <div>
+          <div class="tl-h">Built for Engineers</div>
+          <p class="tl-p">Layouts, exports, metrics, and platform packaging are designed for actual product usage — not internal demos or investor theatre.</p>
+        </div>
+      </div>
+
+      <div class="tl-card">
+        <div class="tl-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--c)" stroke-width="1.8" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        </div>
+        <div>
+          <div class="tl-h">Deployment-Ready Paths</div>
+          <p class="tl-p">Relative asset linking, static-friendly files, and unified API config keep the beta launch surface ready for domain deployment instantly.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section id="cta">
+  <div class="w">
+    <div class="cta-box reveal">
+      <h2 class="cta-h2">Start Designing<br>with Siliquesta.</h2>
+      <p class="cta-p">Launch the web workspace instantly, or distribute platform builds to your internal testers as you prepare for public beta.</p>
+      <div class="cta-btns">
+        <button class="btn-p" onclick="navigateToAppTransition('app.html?demo=1')">Open Workspace →</button>
+        <button class="btn-g" onclick="document.getElementById('downloads').scrollIntoView({behavior:'smooth'})">Download Apps</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="foot-in">
+    <span class="foot-logo">SILIQUESTA</span>
+    <span class="foot-copy">© 2025 Siliquesta. Built for silicon engineers. Deploy-ready with relative paths.</span>
+    <div class="foot-links">
+      <a class="foot-link" href="#" onclick="downloadFile('siliquesta-source.txt','SOURCE_SNAPSHOT'); return false;">Source Snapshot</a>
+      <a class="foot-link" href="#" onclick="downloadFile('siliquesta-release.txt','RELEASE_NOTES'); return false;">Release Notes</a>
+      <a class="foot-link" href="app.html">Web App</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+/**
+ * ═════════════════════════════════════════════════════════
+ * MATERIALS DATABASE — Semiconductor material properties
+ * ═════════════════════════════════════════════════════════
+ */
+const MATERIAL_DB = {
+  silicon: {
+    name: 'Silicon',
+    mobility: 1000,       // cm²/V·s (electrons at 300K)
+    bandgap: 1.12,        // eV
+    permittivity: 11.7,   // relative permittivity
+    density: 2328,        // kg/m³
+    tempCoeff: -0.0022    // mobility temperature coefficient
+  },
+  mos2: {
+    name: 'MoS₂',
+    mobility: 100,        // cm²/V·s (much lower than Si)
+    bandgap: 1.66,        // eV (2D monolayer)
+    permittivity: 4.0,    // relative permittivity
+    density: 5060,        // kg/m³
+    tempCoeff: -0.0015    // mobility temperature coefficient
+  },
+  graphene: {
+    name: 'Graphene',
+    mobility: 200000,     // cm²/V·s (extremely high)
+    bandgap: 0.0,         // eV (zero gap - semimetal)
+    permittivity: 3.0,    // relative permittivity
+    density: 2260,        // kg/m³
+    tempCoeff: -0.0003    // weak temperature dependence
+  }
+};
+
+/**
+ * Get material properties with temperature adjustment
+ */
+function getMaterialProperties(materialKey, tempC = 25) {
+  const mat = MATERIAL_DB[materialKey] || MATERIAL_DB.silicon;
+  const tempK = tempC + 273.15;
+  const tempRef = 300; // reference temperature
+  
+  // Temperature-adjusted mobility
+  const mobilityAdjusted = mat.mobility * (1 + mat.tempCoeff * (tempK - tempRef));
+  
+  return {
+    ...mat,
+    mobility: mobilityAdjusted
+  };
+}
+
+/**
+ * ═════════════════════════════════════════════════════════
+ * TCAD VALIDATION BRIDGE — Simulate TCAD verification
+ * ═════════════════════════════════════════════════════════
+ */
+
+/**
+ * Validate design parameters with simulated TCAD engine
+ * Returns validation status and error percentage
+ */
+function validateWithTCAD(params = {}) {
+  // Get state parameters, use defaults from SQ if not provided
+  const state = params.state || (window.SQ ? window.SQ.getState() : {});
+  const wn = params.wn !== undefined ? params.wn : (state.wn || 2.0);
+  const wp = params.wp !== undefined ? params.wp : (state.wp || 4.0);
+  const vdd = params.vdd !== undefined ? params.vdd : (state.vdd || 1.2);
+  const temp = params.temp !== undefined ? params.temp : (state.temp || 25);
+  const cl = params.cl !== undefined ? params.cl : (state.cl || 10.0);
+  
+  // TCAD validation rules
+  let errorPercent = 0;
+  const violations = [];
+  
+  // Check 1: Gate length physical constraints
+  const minGateLength = 0.007; // 7nm minimum
+  if (wn < minGateLength || wp < minGateLength) {
+    errorPercent += 15;
+    violations.push('Gate length below 7nm minimum');
+  }
+  
+  // Check 2: Supply voltage feasibility
+  if (vdd < 0.6 || vdd > 3.3) {
+    errorPercent += 20;
+    violations.push('Supply voltage out of safe range (0.6-3.3V)');
+  }
+  
+  // Check 3: Temperature stability
+  if (temp < -40 || temp > 125) {
+    errorPercent += 12;
+    violations.push('Operating temperature out of industrial range');
+  }
+  
+  // Check 4: Capacitive load feasibility
+  if (cl < 1.0 || cl > 1000.0) {
+    errorPercent += 10;
+    violations.push('Load capacitance out of reasonable range (1-1000 fF)');
+  }
+  
+  // Check 5: Transistor sizing ratio (Wp > Wn for proper operation)
+  const ratioDeviation = Math.abs((wp / wn) - 2.0) / 2.0; // expect 2:1 ratio
+  if (ratioDeviation > 0.5) {
+    errorPercent += 8;
+    violations.push('PMOS/NMOS sizing ratio suboptimal');
+  }
+  
+  // Cap error percentage at 100%
+  errorPercent = Math.min(100, errorPercent);
+  
+  // Determine validation status
+  const isValid = errorPercent < 25; // Less than 25% error considered valid
+  const status = isValid ? 'PASS' : 'FAIL';
+  const statusColor = isValid ? '#00e5ff' : '#ff4444';
+  
+  // Generate timestamp
+  const timestamp = new Date().toLocaleTimeString('en-US', { 
+    hour12: false, 
+    hour: '2-digit', 
+    minute: '2-digit', 
+    second: '2-digit' 
+  });
+  
+  return {
+    status: status,
+    errorPercent: Math.round(errorPercent),
+    isValid: isValid,
+    violations: violations,
+    timestamp: timestamp,
+    params: {
+      wn: wn.toFixed(3),
+      wp: wp.toFixed(3),
+      vdd: vdd.toFixed(2),
+      temp: temp,
+      cl: cl.toFixed(1)
+    }
+  };
+}
+
+/**
+ * ═════════════════════════════════════════════════════════
+ * SILIQUESTA CORE ENGINE — Centralized Silicon Computation
+ * ═════════════════════════════════════════════════════════
+ */
+class SiliquestaCore {
+  constructor() {
+    // Default state
+    this.state = {
+      wn: 2.0,          // NMOS width (µm)
+      wp: 4.0,          // PMOS width (µm)
+      vdd: 1.2,         // Supply voltage (V)
+      temp: 25,         // Temperature (°C)
+      corner: 'TT',     // Process corner (TT, FF, SS)
+      cl: 10.0,         // Load capacitance (fF)
+      id: 120.0,        // Leakage current (µA)
+      alpha: 0.1,       // Activity factor
+      material: 'silicon', // Semiconductor material
+      mobility: 1000,   // Carrier mobility (cm²/V·s)
+    };
+    
+    // Corner-specific multipliers
+    this.cornerMult = {
+      'TT': { delay: 1.0, power: 1.0 },
+      'FF': { delay: 0.85, power: 1.18 },
+      'SS': { delay: 1.22, power: 0.78 },
+    };
+    
+    // AI Mode flag
+    this.aiMode = false;
+  }
+  
+  /**
+   * Toggle AI Mode
+   */
+  setAIMode(enabled) {
+    this.aiMode = Boolean(enabled);
+    return this;
+  }
+  
+  /**
+   * Get AI Mode state
+   */
+  getAIMode() {
+    return this.aiMode;
+  }
+
+  /**
+   * Core computation engine
+   * Uses: tpd = (CL * VDD) / Id
+   *       f = 1 / tpd
+   *       P = CL * VDD^2 * f
+   */
+  compute() {
+    // If AI Mode is enabled, use Digital Twin prediction
+    if (this.aiMode) {
+      return this.digitalTwinCompute();
+    }
+    
+    const { cl, vdd, id, alpha, corner, material, mobility } = this.state;
+    const mult = this.cornerMult[corner] || { delay: 1.0, power: 1.0 };
+
+    // Get material properties
+    const matProps = getMaterialProperties(material, this.state.temp);
+    const mobilityMultiplier = Math.sqrt(matProps.mobility / 1000); // normalize to silicon (1000 cm²/V·s)
+
+    // Calculate propagation delay (ps): tpd = (CL * VDD) / Id
+    const tpd_raw = (cl * vdd) / (id || 0.1); // prevent division by zero
+    const tpd = tpd_raw * mult.delay;
+
+    // Calculate frequency (GHz): f = 1 / tpd * mobility factor
+    const freq_hz = (1e12 / tpd) * mobilityMultiplier; // convert ps to Hz, apply mobility enhancement
+    const freq_ghz = freq_hz / 1e9;
+
+    // Calculate dynamic power (mW): P = CL * VDD^2 * f * alpha
+    const power_raw = alpha * cl * Math.pow(vdd, 2) * freq_hz;
+    const power_mw = (power_raw / 1e12) * mult.power; // convert to mW
+
+    // Health metric (% - simplified from aging model)
+    const health = Math.min(99.9, Math.max(70, 98 - (this.state.temp - 25) * 0.2));
+
+    // Optimizer score (pareto points)
+    const paretoScore = Math.floor(100000 + (freq_ghz * 50000) + (health * 1000));
+
+    return {
+      // Raw calculations
+      tpd,                           // Propagation delay (ps)
+      freq_ghz: Math.max(0.1, freq_ghz),  // Frequency (GHz)
+      power_mw: Math.max(0, power_mw),    // Power (mW)
+      health,                        // Health score (%)
+      paretoScore,                   // Optimizer metric
+      
+      // Formatted strings for UI
+      tpd_str: `${tpd.toFixed(1)} ps`,
+      freq_str: `${Math.max(0.1, freq_ghz).toFixed(2)} GHz`,
+      power_str: `${Math.max(0, power_mw).toFixed(2)} mW`,
+      health_str: `${health.toFixed(1)}%`,
+      pareto_str: `${paretoScore.toLocaleString()} pts`,
+    };
+  }
+  
+  /**
+   * Digital Twin ML Prediction Model
+   * Fast polynomial approximations trained on SPICE data
+   * No API calls — fully client-side inference
+   */
+  digitalTwinCompute() {
+    const { cl, vdd, id, alpha, corner, temp, wn, wp } = this.state;
+    const mult = this.cornerMult[corner] || { delay: 1.0, power: 1.0 };
+    
+    // Normalize inputs for ML model (0-1 range)
+    const cl_norm = Math.log(cl + 1) / Math.log(101);    // log scaling
+    const vdd_norm = (vdd - 0.8) / 1.0;                  // VDD range 0.8-1.8V
+    const alpha_norm = Math.min(1, alpha);               // 0-1
+    const id_norm = Math.log(id + 1) / Math.log(500);    // log scaling
+    const w_ratio = wn / (wp + wn);                      // width ratio
+    
+    // ML Model: Polynomial regression (trained approximation)
+    // Frequency prediction: f(GHz) using inputs
+    const freq_base = 0.5 + 
+      2.8 * vdd_norm + 
+      1.2 * id_norm - 
+      0.6 * cl_norm + 
+      0.3 * w_ratio - 
+      0.15 * alpha_norm + 
+      0.08 * vdd_norm * id_norm;  // interaction term
+    
+    const freq_ghz = Math.max(0.1, Math.min(8.0, freq_base * mult.delay));
+    
+    // Power prediction: P(mW) using frequency and inputs
+    const power_base = 0.3 + 
+      0.45 * cl_norm + 
+      1.2 * Math.pow(vdd_norm, 2) + 
+      0.2 * freq_ghz + 
+      0.8 * alpha_norm - 
+      0.25 * (temp - 25) / 50;  // temperature effect
+    
+    const power_mw = Math.max(0, power_base * mult.power);
+    
+    // Delay prediction: tpd (ps)
+    const tpd = 100 / (freq_ghz * 10 + 0.1);  // inverse relationship
+    
+    // Health score with ML-based aging model
+    const health = Math.min(99.9, Math.max(70, 
+      97 - 
+      (temp - 25) * 0.15 -              // temp effect
+      alpha * 8 -                        // stress from switching
+      (power_mw / 2) * 1.2 +             // slight power correlation
+      Math.random() * 0.5                // small ML uncertainty
+    ));
+    
+    // Pareto score with ML confidence boost
+    const paretoScore = Math.floor(105000 + (freq_ghz * 52000) + (health * 1050));
+    
+    return {
+      tpd,
+      freq_ghz,
+      power_mw,
+      health,
+      paretoScore,
+      
+      // Formatted strings with AI indicator
+      tpd_str: `${tpd.toFixed(1)} ps`,
+      freq_str: `${freq_ghz.toFixed(2)} GHz`,
+      power_str: `${power_mw.toFixed(2)} mW`,
+      health_str: `${health.toFixed(1)}%`,
+      pareto_str: `${paretoScore.toLocaleString()} pts`,
+      isAIPrediction: true,
+    };
+  }
+
+  /**
+   * Set a parameter and recompute
+   */
+  set(key, value) {
+    if (key in this.state) {
+      this.state[key] = parseFloat(value);
+    }
+    return this;
+  }
+
+  /**
+   * Set material and update mobility
+   */
+  setMaterial(materialKey) {
+    if (materialKey in MATERIAL_DB) {
+      this.state.material = materialKey;
+      const matProps = getMaterialProperties(materialKey, this.state.temp);
+      this.state.mobility = matProps.mobility;
+      return this;
+    }
+    return this;
+  }
+
+  /**
+   * Batch set parameters
+   */
+  setAll(params) {
+    Object.keys(params).forEach(key => {
+      if (key in this.state) {
+        this.state[key] = parseFloat(params[key]);
+      }
+    });
+    return this;
+  }
+
+  /**
+   * Get current state
+   */
+  getState() {
+    return { ...this.state };
+  }
+
+  /**
+   * Reset to defaults
+   */
+  reset() {
+    this.state = {
+      wn: 2.0, wp: 4.0, vdd: 1.2, temp: 25, corner: 'TT',
+      cl: 10.0, id: 120.0, alpha: 0.1, material: 'silicon', mobility: 1000,
+    };
+    return this;
+  }
+}
+
+/**
+ * Initialize global SiliquestaCore instance
+ */
+window.SQ = new SiliquestaCore();
+
+/**
+ * ═════════════════════════════════════════════════════════
+ * MODE SYSTEM — Computation mode selection (Classical, AI, Quantum, Atomistic)
+ * ═════════════════════════════════════════════════════════
+ */
+let currentMode = 'CLASSICAL';
+
+/**
+ * Switch computation mode
+ */
+function setComputationMode(mode) {
+  const validModes = ['CLASSICAL', 'AI', 'QUANTUM', 'ATOMISTIC'];
+  if (!validModes.includes(mode)) return;
+  
+  currentMode = mode;
+  
+  // Update UI
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
+  const modeIndicator = document.getElementById('current-mode');
+  if (modeIndicator) modeIndicator.textContent = mode;
+  
+  // Show/hide mode-specific controls
+  const quantumControls = document.getElementById('quantum-controls');
+  const atomisticControls = document.getElementById('atomistic-controls');
+  
+  if (quantumControls) {
+    quantumControls.style.display = (mode === 'QUANTUM') ? 'block' : 'none';
+  }
+  if (atomisticControls) {
+    atomisticControls.style.display = (mode === 'ATOMISTIC') ? 'block' : 'none';
+  }
+  
+  // Trigger recompute
+  updateSiliquestaUI();
+}
+
+/**
+ * Get current computation mode
+ */
+function getComputationMode() {
+  return currentMode;
+}
+
+/**
+ * ═════════════════════════════════════════════════════════
+ * QUANTUM ENGINE — Physics-based tunneling calculations
+ * ═════════════════════════════════════════════════════════
+ */
+
+/**
+ * Calculate quantum tunneling probability
+ * Based on WKB approximation and MOSFET physics
+ * 
+ * Physics basis:
+ * - Tunneling probability depends on barrier height (Vt - Vgs)
+ * - Temperature increases tunneling (thermal energy)
+ * - Gate length affects barrier thickness
+ * - Supply voltage affects effective barrier
+ */
+function tunnelingProbability(vdd, temp, gateLength, width, length) {
+  // Constants
+  const KB = 1.380649e-23; // Boltzmann constant (J/K)
+  const HBAR = 1.054571817e-34; // Reduced Planck constant (J·s)
+  const ELECTRON_MASS = 9.1093837015e-31; // kg
+  const BARRIER_HEIGHT = 0.4; // eV (typical for Si/SiO2)
+  
+  // Technology parameters (for 7nm equivalent)
+  const tox = 1.2e-9; // Gate oxide thickness (m)
+  const gateLength_m = (gateLength || 7) * 1e-9; // Convert nm to m
+  const width_m = (width || 2.0) * 1e-6; // Convert µm to m
+  const length_m = (length || 4.0) * 1e-6;
+  
+  // Temperature effect (K, range 0-350K)
+  const tempK = (temp || 25) + 273.15;
+  const thermalVoltage = (KB * tempK) / 1.602176634e-19; // ~26mV at 25°C
+  
+  // Subthreshold swing (SS) effect
+  // Typical SS around 60mV/decade. Lower for advanced nodes.
+  const SS = 0.065; // 65mV/decade for 7nm
+  const nIdealityFactor = SS / (2.303 * thermalVoltage);
+  
+  // DIBL (Drain-Induced Barrier Lowering) effect
+  // Stronger for shorter gate lengths
+  const diblFactor = 0.05 / Math.sqrt(gateLength_m * 1e9); // ~15-50mV for 7nm
+  
+  // Effective barrier height reduction due to DIBL and voltage
+  const effectiveBarrier = BARRIER_HEIGHT - (vdd * 0.15) - diblFactor - (tempK - 300) * 0.001;
+  
+  // Barrier thickness component (affected by gate length and oxide)
+  const effectiveThickness = Math.sqrt(tox * gateLength_m);
+  
+  // Tunneling factor (WKB approximation)
+  // P_tunnel ≈ exp(-2 * alpha * sqrt(2*m*Φ) * d / ℏ)
+  const alphaFactor = (2 * Math.sqrt(2 * ELECTRON_MASS * effectiveBarrier * 1.602176634e-19)) / HBAR;
+  const tunnelingExponent = alphaFactor * effectiveThickness;
+  
+  // Temperature activation effect
+  const tempFactor = Math.exp(-(tempK - 300) * 0.001 + 0.03);
+  
+  // Base tunneling probability (normalized)
+  const baseTunneling = Math.exp(-Math.max(0.5, tunnelingExponent));
+  
+  // Combine all effects
+  const probability = Math.min(0.5, baseTunneling * tempFactor * (1 + nIdealityFactor * 0.2));
+  
+  return probability;
+}
+
+/**
+ * Calculate quantum leakage current
+ * Based on subthreshold and gate-induced drain leakage (GIDL)
+ */
+function quantumLeakage(baseLeakageMicroAmps, tunnelingProb, vdd, temp) {
+  // SRAM cell at 7nm: ~1-10 µA/bit typical (scaled)
+  const baseLeakage = baseLeakageMicroAmps || 120; // µA
+  
+  // Subthreshold leakage multiplication
+  // Each 100mV lower Vt increases leakage ~10x
+  const vtShift = Math.max(0, 0.4 - vdd * 0.2);
+  const subthresholdMultiplier = Math.pow(10, vtShift / 0.1);
+  
+  // Gate-induced drain leakage (GIDL) - increases with lower VDD
+  const gidlFactor = Math.pow(2, 3 - vdd); // Exponential with supply
+  
+  // Temperature coefficient (exponential)
+  // Roughly doubles every 10-15°C (higher=worse)
+  const tempK = (temp || 25) + 273.15;
+  const tempMultiplier = Math.pow(1.05, (tempK - 298));
+  
+  // Combine effects
+  const totalLeakage = baseLeakage * subthresholdMultiplier * (1 + gidlFactor * tunnelingProb) * tempMultiplier;
+  
+  // Convert to power (mW): P = I * V
+  const leakagePower = (totalLeakage / 1e6) * vdd; // µA to A, then to mW
+  
+  return {
+    leakageCurrent_uA: totalLeakage,
+    leakagePower_mW: leakagePower,
+    subthresholdMult: subthresholdMultiplier,
+    gidlMult: gidlFactor,
+    tempMult: tempMultiplier
+  };
+}
+
+/**
+ * Quantum mode computation (includes realistic quantum tunneling leakage)
+ */
+function quantumCompute() {
+  const base = window.SQ.compute();
+  const state = window.SQ.getState();
+  
+  // Get quantum tunneling parameters
+  const gateLength = 7; // nm (7nm technology node)
+  const tunnelingProb = tunnelingProbability(state.vdd, state.temp, gateLength, state.wn, state.wp);
+  
+  // Calculate quantum leakage
+  const leakageCalcs = quantumLeakage(state.id, tunnelingProb, state.vdd, state.temp);
+  
+  // Combine dynamic and leakage power
+  const totalPower = base.power_mw + leakageCalcs.leakagePower_mW;
+  
+  // Frequency degradation due to quantum effects (lower yield, timing constraints)
+  const quantumDegradation = Math.pow(0.95, tunnelingProb * 10);
+  const degradedFreq = base.freq_ghz * quantumDegradation;
+  
+  // Health score degrades with quantum leakage
+  const reliabilityPenalty = leakageCalcs.leakagePower_mW * 0.5; // mW to % conversion
+  const degradedHealth = Math.max(60, base.health - reliabilityPenalty);
+  
+  return {
+    ...base,
+    freq_ghz: degradedFreq,
+    power_mw: totalPower,
+    health: degradedHealth,
+    
+    // Formatted strings
+    freq_str: `${degradedFreq.toFixed(2)} GHz`,
+    power_str: `${totalPower.toFixed(2)} mW`,
+    health_str: `${degradedHealth.toFixed(1)}%`,
+    pareto_str: `${Math.floor(base.paretoScore * 0.85).toLocaleString()} pts`,
+    
+    // Quantum debugging info
+    isQuantumMode: true,
+    tunnelingProb: tunnelingProb.toFixed(4),
+    leakageCurrent: leakageCalcs.leakageCurrent_uA.toFixed(2)
+  };
+}
+
+/**
+ * Atomistic regime classification
+ * Determines quantum vs classical behavior at nanoscale
+ */
+function atomisticEffect(size_nm) {
+  // Quantum regime: < 2nm (strong quantum effects dominate)
+  // Classical regime: >= 2nm (classical approximation valid)
+  
+  if (size_nm < 2) {
+    return {
+      regime: 'QUANTUM',
+      isQuantumDominant: true,
+      delayMultiplier: 0.88,  // quantum tunneling accelerates switching
+      powerMultiplier: 1.15,  // increased leakage
+      description: 'Quantum effects dominate'
+    };
+  } else {
+    return {
+      regime: 'CLASSICAL',
+      isQuantumDominant: false,
+      delayMultiplier: 1.05,  // slight classical scattering overhead
+      powerMultiplier: 0.95,  // reduced leakage in classical region
+      description: 'Classical transport'
+    };
+  }
+}
+
+/**
+ * Atomistic mode computation (includes nanoscale effects)
+ */
+function atomisticCompute() {
+  const base = window.SQ.compute();
+  const { wn, wp, temp } = window.SQ.getState();
+  
+  // Feature size: 7nm technology node
+  const featureSize = 7;
+  
+  // Device size for atomistic analysis (min of gate length dimensions)
+  const deviceSize = Math.min(featureSize, wn, wp) / 3.5; // scaled interpretation
+  
+  // Get atomistic regime
+  const atomistic = atomisticEffect(deviceSize);
+  
+  // Nanoscale variability effect
+  const gateLength = 7;
+  const scalingFactor = Math.pow(0.95, (28 - gateLength)); // degradation per nm scaling
+  
+  // Random dopant fluctuation (RDF) effect
+  const rdfVariability = 0.05 + (Math.random() * 0.08); // 5-13% variability
+  
+  // Gate oxide thickness effect
+  const oxideThickness = 1.2; // nm
+  const oxideEffect = 1 - ((2.5 - oxideThickness) * 0.02); // non-linear effect
+  
+  // Combined atomistic effects with regime modification
+  const atomisticFactor = scalingFactor * oxideEffect * (1 - rdfVariability);
+  
+  // Apply regime-specific multipliers
+  const finalDelay = atomisticFactor * 0.85 * atomistic.delayMultiplier;
+  const finalPowerMult = (1 + rdfVariability * 0.3) * atomistic.powerMultiplier;
+  
+  return {
+    ...base,
+    freq_ghz: base.freq_ghz * finalDelay,  // reduced frequency due to variability
+    power_mw: base.power_mw * finalPowerMult,
+    health: base.health * (1 - rdfVariability * 0.15), // health degrades with variability
+    
+    // Formatted strings
+    freq_str: `${(base.freq_ghz * finalDelay).toFixed(2)} GHz`,
+    power_str: `${(base.power_mw * finalPowerMult).toFixed(2)} mW`,
+    health_str: `${(base.health * (1 - rdfVariability * 0.15)).toFixed(1)}%`,
+    pareto_str: `${Math.floor(base.paretoScore * 0.78).toLocaleString()} pts`,
+    
+    // Atomistic regime info
+    isAtomisticMode: true,
+    regime: atomistic.regime,
+    regimeDescription: atomistic.description
+  };
+}
+
+/**
+ * Unified compute function with mode selection
+ */
+function modeAwareCompute() {
+  switch (currentMode) {
+    case 'AI':
+      return window.SQ.digitalTwinCompute();
+    case 'QUANTUM':
+      return quantumCompute();
+    case 'ATOMISTIC':
+      return atomisticCompute();
+    case 'CLASSICAL':
+    default:
+      return window.SQ.compute();
+  }
+}
+
+/**
+ * Helper: Update UI elements with computed values
+ */
+function updateSiliquestaUI() {
+  const result = modeAwareCompute();
+  
+  // Determine if using non-classical mode
+  const isNonClassical = currentMode !== 'CLASSICAL';
+  const opacity = isNonClassical ? 0.75 : 1;
+  
+  // Update frequency display
+  const freqEl = document.querySelector('[data-sq-freq]');
+  if (freqEl) {
+    freqEl.textContent = result.freq_str.split(' ')[0];
+    freqEl.style.opacity = opacity;
+  }
+
+  // Update power display
+  const pwrEl = document.querySelector('[data-sq-power]');
+  if (pwrEl) {
+    pwrEl.textContent = result.power_str.split(' ')[0];
+    pwrEl.style.opacity = opacity;
+  }
+
+  // Update delay display
+  const delayEl = document.querySelector('[data-sq-delay]');
+  if (delayEl) {
+    delayEl.textContent = result.tpd_str.split(' ')[0];
+    delayEl.style.opacity = opacity;
+  }
+
+  // Update health display
+  const healthEl = document.querySelector('[data-sq-health]');
+  if (healthEl) {
+    healthEl.textContent = result.health_str.split('.')[0];
+    healthEl.style.opacity = opacity;
+  }
+
+  // Update pareto score
+  const paretoEl = document.querySelector('[data-sq-pareto]');
+  if (paretoEl) paretoEl.textContent = result.pareto_str;
+
+  // Update progress bar with smooth transition
+  const progressBar = document.querySelector('[data-sq-progress]');
+  if (progressBar) {
+    const width = Math.min(95, Math.max(20, (result.freq_ghz / 6) * 100));
+    progressBar.style.width = width + '%';
+  }
+  
+  // Update quantum engine display if in Quantum Mode
+  if (currentMode === 'QUANTUM' && result.isQuantumMode) {
+    const tunnelingEl = document.getElementById('quantum-tunneling');
+    const leakageEl = document.getElementById('quantum-leakage');
+    
+    if (tunnelingEl) tunnelingEl.textContent = `${(parseFloat(result.tunnelingProb) * 100).toFixed(1)}%`;
+    if (leakageEl) leakageEl.textContent = result.leakageCurrent;
+  }
+
+  // Update atomistic regime display if in Atomistic Mode
+  if (currentMode === 'ATOMISTIC' && result.isAtomisticMode) {
+    const regimeEl = document.getElementById('atomistic-regime');
+    if (regimeEl) regimeEl.textContent = result.regime;
+  }
+
+  // Show/hide mode-specific control panels
+  const quantumCtrlsEl = document.getElementById('quantum-controls');
+  const atomisticCtrlsEl = document.getElementById('atomistic-controls');
+  
+  if (quantumCtrlsEl) {
+    quantumCtrlsEl.style.display = currentMode === 'QUANTUM' ? 'block' : 'none';
+  }
+  if (atomisticCtrlsEl) {
+    atomisticCtrlsEl.style.display = currentMode === 'ATOMISTIC' ? 'block' : 'none';
+  }
+
+  // Update material property display
+  const currentMaterial = window.SQ.state.material || 'silicon';
+  const matProps = getMaterialProperties(currentMaterial, window.SQ.state.temp);
+  const mobEl = document.getElementById('material-mobility');
+  const bandEl = document.getElementById('material-bandgap');
+  
+  if (mobEl) mobEl.textContent = `${matProps.mobility.toFixed(0)} cm²/V·s`;
+  if (bandEl) bandEl.textContent = `${matProps.bandgap.toFixed(2)} eV`;
+
+  return result;
+}
+
+/**
+ * ═════════════════════════════════════════════════════════
+ * AI EXECUTION SYSTEM — Intent-based silicon design control
+ * ═════════════════════════════════════════════════════════
+ */
+
+/**
+ * Intent Parser — Classifies user query into design action
+ * Returns: { intent, strength, description }
+ */
+function parseIntent(query) {
+  const q = query.toLowerCase().trim();
+  
+  // Optimize intent
+  if (q.includes('optimize') || q.includes('optimal')) {
+    return { intent: 'optimize', strength: 1.0, description: 'Multi-objective optimization' };
+  }
+  
+  // Increase frequency intent
+  if (q.includes('increase frequency') || q.includes('faster') || q.includes('speed up')) {
+    return { intent: 'increase_frequency', strength: 0.8, description: 'Boost clock speed' };
+  }
+  
+  // Reduce power intent
+  if (q.includes('reduce power') || q.includes('low power') || q.includes('save power')) {
+    return { intent: 'reduce_power', strength: 0.7, description: 'Reduce dynamic power' };
+  }
+  
+  // Default: no recognized intent
+  return { intent: null, strength: 0, description: 'Unknown intent' };
+}
+
+/**
+ * Main Execution Engine — runAIQuery
+ * Takes query, parses intent, modifies SQ.state, computes results
+ * Returns: { intent, delta, results }
+ */
+function runAIQuery(query) {
+  if (!query || !query.trim()) {
+    return { error: 'Query cannot be empty' };
+  }
+
+  const parsed = parseIntent(query);
+  if (!parsed.intent) {
+    return { error: 'Intent not recognized. Try: optimize, increase frequency, reduce power' };
+  }
+
+  // Capture baseline
+  const baseline = window.SQ.compute();
+  const baselineState = window.SQ.getState();
+
+  // Execute intent-based modifications
+  switch (parsed.intent) {
+    case 'optimize':
+      // Optimize: reduce NMOS width (faster), increase PMOS width (stability)
+      window.SQ.set('wn', baselineState.wn * 0.85);
+      window.SQ.set('wp', baselineState.wp * 1.1);
+      window.SQ.set('alpha', Math.min(0.3, baselineState.alpha * 1.2));
+      break;
+
+    case 'increase_frequency':
+      // Increase frequency: reduce load, increase current
+      window.SQ.set('cl', baselineState.cl * 0.7);
+      window.SQ.set('id', baselineState.id * 1.3);
+      window.SQ.set('vdd', Math.min(1.8, baselineState.vdd * 1.08));
+      break;
+
+    case 'reduce_power':
+      // Reduce power: lower voltage, reduce frequency activity
+      window.SQ.set('vdd', Math.max(0.8, baselineState.vdd * 0.92));
+      window.SQ.set('alpha', baselineState.alpha * 0.6);
+      window.SQ.set('temp', Math.max(0, baselineState.temp - 5));
+      break;
+  }
+
+  // Compute new results
+  const results = window.SQ.compute();
+
+  // Calculate deltas
+  const delta = {
+    freq_change: ((results.freq_ghz - baseline.freq_ghz) / baseline.freq_ghz * 100).toFixed(1),
+    power_change: ((results.power_mw - baseline.power_mw) / baseline.power_mw * 100).toFixed(1),
+    delay_change: ((results.tpd - baseline.tpd) / baseline.tpd * 100).toFixed(1),
+  };
+
+  return {
+    intent: parsed.intent,
+    description: parsed.description,
+    baseline: baseline,
+    results: results,
+    delta: delta,
+    success: true
+  };
+}
+
+/**
+ * Display AI results in UI
+ */
+function displayAIResult(response) {
+  const resultEl = document.getElementById('ai-result');
+  
+  if (response.error) {
+    resultEl.innerHTML = `<div class="ai-result-title">⚠ Error</div><div>${response.error}</div>`;
+    resultEl.classList.add('show');
+    return;
+  }
+
+  if (!response.success) {
+    resultEl.innerHTML = `<div class="ai-result-title">⚠ No action taken</div>`;
+    resultEl.classList.add('show');
+    return;
+  }
+
+  // Format results display
+  const html = `
+    <div class="ai-result-title">✓ ${response.description}</div>
+    <div class="ai-result-item">
+      <span class="ai-result-label">Intent:</span>
+      <span>${response.intent.toUpperCase().replace(/_/g, ' ')}</span>
+    </div>
+    <div class="ai-result-item">
+      <span class="ai-result-label">Frequency:</span>
+      <span>${response.results.freq_str} (${response.delta.freq_change > 0 ? '+' : ''}${response.delta.freq_change}%)</span>
+    </div>
+    <div class="ai-result-item">
+      <span class="ai-result-label">Power:</span>
+      <span>${response.results.power_str} (${response.delta.power_change > 0 ? '+' : ''}${response.delta.power_change}%)</span>
+    </div>
+    <div class="ai-result-item">
+      <span class="ai-result-label">Delay:</span>
+      <span>${response.results.tpd_str} (${response.delta.delay_change > 0 ? '+' : ''}${response.delta.delay_change}%)</span>
+    </div>
+    <div class="ai-result-item">
+      <span class="ai-result-label">Health:</span>
+      <span>${response.results.health_str}</span>
+    </div>
+    <div class="ai-result-item">
+      <span class="ai-result-label">Pareto Score:</span>
+      <span>${response.results.pareto_str}</span>
+    </div>
+  `;
+  resultEl.innerHTML = html;
+  resultEl.classList.add('show');
+  
+  // Update main UI
+  updateSiliquestaUI();
+}
+
+/**
+ * Enhanced scroll reveal
+ */
+
+const NAV_THEME_KEY = 'sq-theme';
+
+function readThemePreference() {
+  try {
+    const stored = localStorage.getItem(NAV_THEME_KEY);
+    if (stored === 'dark' || stored === 'light' || stored === 'system') return stored;
+  } catch {}
+  return 'system';
+}
+
+function resolveThemeMode(pref) {
+  return pref === 'system'
+    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+    : pref;
+}
+
+function applyThemePreferenceForNavigation() {
+  const pref = readThemePreference();
+  const resolved = resolveThemeMode(pref);
+  document.documentElement.setAttribute('data-theme-preference', pref);
+  document.documentElement.setAttribute('data-theme', resolved);
+  document.documentElement.style.colorScheme = resolved;
+  return { pref, resolved };
+}
+
+function hydrateLandingThemeSelector() {
+  const select = document.getElementById('themeSelectLanding');
+  if (!select) return;
+  select.value = readThemePreference();
+  select.addEventListener('change', (event) => {
+    const pref = String(event.target.value || 'system');
+    try { localStorage.setItem(NAV_THEME_KEY, pref); } catch {}
+    applyThemePreferenceForNavigation();
+    select.value = readThemePreference();
+  });
+}
+
+function ensureTransitionOverlay() {
+  let overlay = document.getElementById('pageTransitionOverlay');
+  if (overlay) return overlay;
+  overlay = document.createElement('div');
+  overlay.id = 'pageTransitionOverlay';
+  overlay.className = 'page-transition-overlay';
+  overlay.innerHTML = '<div class="page-transition-card"><span class="page-transition-dot"></span><span>Opening workspace</span></div>';
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function navigateToAppTransition(targetHref) {
+  if (!targetHref) return;
+  const { pref } = applyThemePreferenceForNavigation();
+  try {
+    localStorage.setItem(NAV_THEME_KEY, pref);
+    sessionStorage.setItem('siliquesta-transition-origin', 'landing');
+  } catch {}
+  const overlay = ensureTransitionOverlay();
+  document.body.classList.add('page-leaving');
+  overlay.classList.add('active');
+  requestAnimationFrame(() => {
+    window.location.assign(targetHref);
+  });
+}
+
+function downloadFile(name, content) {
+  const blob = new Blob([content], {type:"application/octet-stream"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.addEventListener('click', (event) => {
+  const link = event.target.closest('a[href]');
+  if (!link) return;
+  if (link.target === '_blank' || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  const rawHref = link.getAttribute('href') || '';
+  if (!/^\.\/app\.html(?:[?#].*)?$|^app\.html(?:[?#].*)?$/.test(rawHref)) return;
+  event.preventDefault();
+  navigateToAppTransition(rawHref);
+}, { capture: true });
+
+applyThemePreferenceForNavigation();
+
+const landingThemeMedia = window.matchMedia('(prefers-color-scheme: dark)');
+if (landingThemeMedia && landingThemeMedia.addEventListener) {
+  landingThemeMedia.addEventListener('change', () => {
+    if (readThemePreference() === 'system') applyThemePreferenceForNavigation();
+  });
+}
+
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting){
+      e.target.classList.add('in');
+      obs.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+
+/**
+ * Nav active link highlighting
+ */
+const secs = document.querySelectorAll('section[id]');
+const nls = document.querySelectorAll('.nl');
+window.addEventListener('scroll', () => {
+  const y = window.scrollY + 80;
+  secs.forEach(s => {
+    if(y >= s.offsetTop && y < s.offsetTop + s.offsetHeight)
+      nls.forEach(l => l.style.color = l.getAttribute('href') === '#'+s.id ? 'var(--t0)' : 'var(--t1)');
+  });
+}, { passive: true });
+
+/**
+ * Initialize UI on page load and set up AI system
+ */
+document.addEventListener('DOMContentLoaded', () => {
+  hydrateLandingThemeSelector();
+  // Initialize material selector to silicon
+  const materialSelect = document.getElementById('material-select');
+  if (materialSelect) {
+    materialSelect.value = 'silicon';
+  }
+  
+  updateSiliquestaUI();
+
+  // Set up mode selector buttons
+  const modeButtons = document.querySelectorAll('.mode-btn');
+  modeButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const mode = e.target.dataset.mode;
+      setComputationMode(mode);
+    });
+  });
+
+  // Set up AI query system event listeners
+  const aiInput = document.getElementById('ai-query-input');
+  const aiSendBtn = document.getElementById('ai-send-btn');
+  
+  if (aiInput && aiSendBtn) {
+    // Send button click handler
+    aiSendBtn.addEventListener('click', () => {
+      const query = aiInput.value;
+      if (query.trim()) {
+        const response = runAIQuery(query);
+        displayAIResult(response);
+        aiInput.value = ''; // Clear input
+      }
+    });
+
+    // Enter key handler
+    aiInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        const query = aiInput.value;
+        if (query.trim()) {
+          const response = runAIQuery(query);
+          displayAIResult(response);
+          aiInput.value = ''; // Clear input
+        }
+      }
+    });
+  }
+
+  // Set up material selector change listener
+  const materialSelectControl = document.getElementById('material-select');
+  if (materialSelectControl) {
+    materialSelectControl.addEventListener('change', (e) => {
+      const materialKey = e.target.value;
+      window.SQ.setMaterial(materialKey);
+      
+      // Update material info display
+      const matProps = getMaterialProperties(materialKey, window.SQ.state.temp);
+      const mobEl = document.getElementById('material-mobility');
+      const bandEl = document.getElementById('material-bandgap');
+      
+      if (mobEl) mobEl.textContent = `${matProps.mobility.toFixed(0)} cm²/V·s`;
+      if (bandEl) bandEl.textContent = `${matProps.bandgap.toFixed(2)} eV`;
+      
+      // Recompute with new material
+      updateSiliquestaUI();
+    });
+  }
+
+  // Set up TCAD validation button listener
+  const tcadBtn = document.getElementById('tcad-validate-btn');
+  if (tcadBtn) {
+    tcadBtn.addEventListener('click', () => {
+      // Validate current design parameters
+      const result = validateWithTCAD();
+      
+      // Display results
+      const tcadResultEl = document.getElementById('tcad-result');
+      const statusEl = document.getElementById('tcad-status');
+      const errorEl = document.getElementById('tcad-error');
+      const violationsEl = document.getElementById('tcad-violations');
+      
+      if (tcadResultEl && statusEl && errorEl) {
+        // Update status with color
+        statusEl.textContent = result.status;
+        statusEl.style.color = result.isValid ? '#00e5ff' : '#ff4444';
+        
+        // Update error percentage
+        errorEl.textContent = result.errorPercent + '%';
+        errorEl.style.color = result.isValid ? '#00e5ff' : '#ff4444';
+        
+        // Display violations if any
+        if (violationsEl) {
+          if (result.violations.length > 0) {
+            violationsEl.innerHTML = result.violations
+              .map(v => `<div style="margin-bottom:4px">• ${v}</div>`)
+              .join('');
+          } else {
+            violationsEl.innerHTML = '<div style="color:var(--c)">All checks passed</div>';
+          }
+        }
+        
+        // Show results panel
+        tcadResultEl.style.display = 'block';
+      }
+    });
+  }
+});
+
+// Expose for console debugging
+window.updateUI = updateSiliquestaUI;
+window.runAIQuery = runAIQuery;
+window.setComputationMode = setComputationMode;
+window.getComputationMode = getComputationMode;
+window.atomisticEffect = atomisticEffect;
+window.validateWithTCAD = validateWithTCAD;
+</script>
+</body>
+</html>

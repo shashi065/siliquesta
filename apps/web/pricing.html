@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SILIQUESTA Pricing — Private Beta</title>
+  <meta name="description" content="SILIQUESTA private beta pricing for AI-powered circuit optimization, reports, teams, and enterprise deployments." />
+  <link rel="icon" href="./favicon.ico" />
+  <link rel="stylesheet" href="./shared/ui.css" />
+  <style>
+    body { min-height: 100vh; }
+    .pricing-page { width: min(1120px, calc(100vw - 32px)); margin: 0 auto; padding: 36px 0 70px; }
+    .pricing-nav { display: flex; justify-content: space-between; align-items: center; gap: 18px; margin-bottom: 70px; }
+    .pricing-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 34px; }
+    .price-card { padding: 26px; border-radius: 26px; background: rgba(255,255,255,0.045); border: 1px solid rgba(255,255,255,0.1); display: grid; gap: 16px; }
+    .price-card.featured { background: linear-gradient(135deg, rgba(0,229,255,0.1), rgba(139,92,246,0.1)); border-color: rgba(0,229,255,0.34); box-shadow: 0 24px 80px rgba(0,229,255,0.08); }
+    .price { font-size: 42px; font-weight: 900; letter-spacing: -0.06em; }
+    .feature-list { display: grid; gap: 12px; color: var(--text-soft); line-height: 1.6; }
+    .compare { margin-top: 22px; overflow: hidden; border-radius: 24px; border: 1px solid rgba(255,255,255,0.08); }
+    .compare-row { display: grid; grid-template-columns: 1.4fr repeat(3, 1fr); gap: 1px; background: rgba(255,255,255,0.08); }
+    .compare-row > div { padding: 16px; background: rgba(8,12,28,0.88); }
+    @media (max-width: 860px) { .pricing-grid, .compare-row { grid-template-columns: 1fr; } .pricing-nav { align-items: flex-start; flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <main class="pricing-page">
+    <nav class="pricing-nav">
+      <div class="brand-lockup">
+        <div class="brand-mark"><img src="./assets/siliquesta-mark.svg" alt="Siliquesta mark" /></div>
+        <div>
+          <div class="metric-label">SILIQUESTA</div>
+          <strong>Private Beta Pricing</strong>
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <a class="btn btn-secondary" href="./index.html">Back to Home</a>
+        <a class="btn btn-primary" href="./app.html?demo=1">Open Workspace</a>
+      </div>
+    </nav>
+
+    <section class="hero-center">
+      <span class="badge badge-blue">Paid beta ready</span>
+      <h1 class="hero-title">Plans for AI-native circuit optimization</h1>
+      <p class="hero-copy">Start free, upgrade to Pro for higher daily optimization capacity, or bring SILIQUESTA into a private enterprise environment.</p>
+    </section>
+
+    <section class="pricing-grid">
+      <article class="price-card">
+        <div class="metric-label">Free</div>
+        <div class="price">$0</div>
+        <p class="card-copy">For evaluation, demos, and first circuit optimization runs.</p>
+        <div class="feature-list">
+          <div>10 optimizations/day</div>
+          <div>Guest mode</div>
+          <div>JSON report export</div>
+        </div>
+        <a class="btn btn-secondary" href="./app.html?demo=1">Start Free</a>
+      </article>
+      <article class="price-card featured">
+        <div class="metric-label">Pro</div>
+        <div class="price">$49</div>
+        <p class="card-copy">For engineers running repeated optimization and design reviews.</p>
+        <div class="feature-list">
+          <div>100 optimizations/day</div>
+          <div>Team invites</div>
+          <div>Exportable optimization reports</div>
+        </div>
+        <a class="btn btn-primary" href="./app.html">Upgrade to Pro</a>
+      </article>
+      <article class="price-card">
+        <div class="metric-label">Enterprise</div>
+        <div class="price">Custom</div>
+        <p class="card-copy">For private deployments, procurement, security review, and advanced support.</p>
+        <div class="feature-list">
+          <div>Unlimited usage</div>
+          <div>Private backend deployment</div>
+          <div>Dedicated support path</div>
+        </div>
+        <a class="btn btn-secondary" href="./app.html">Contact Sales</a>
+      </article>
+    </section>
+
+    <section class="glass section-card" style="margin-top:22px">
+      <div class="metric-label">Feature comparison</div>
+      <div class="compare">
+        <div class="compare-row"><div>Capability</div><div>Free</div><div>Pro</div><div>Enterprise</div></div>
+        <div class="compare-row"><div>Daily optimization runs</div><div>10</div><div>100</div><div>Unlimited</div></div>
+        <div class="compare-row"><div>Live WebSocket optimizer</div><div>Included</div><div>Included</div><div>Included</div></div>
+        <div class="compare-row"><div>Team accounts</div><div>Viewer only</div><div>Included</div><div>Custom roles</div></div>
+        <div class="compare-row"><div>Deployment model</div><div>Cloud beta</div><div>Cloud beta</div><div>Private cloud</div></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

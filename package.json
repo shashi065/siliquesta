@@ -1,0 +1,24 @@
+{
+  "name": "siliquesta-platform",
+  "version": "2.1.0",
+  "private": true,
+  "description": "SILIQUESTA production monorepo for web, desktop, mobile, and API services",
+  "workspaces": [
+    "apps/*",
+    "services/*",
+    "mobile"
+  ],
+  "scripts": {
+    "build-web": "node scripts/build-web.mjs",
+    "dev:web": "npm --prefix apps/web run dev",
+    "build:web-app": "npm --prefix apps/web run build",
+    "start:web": "npm --prefix apps/web run start",
+    "api:start": "npm --prefix services/api run start",
+    "api:build": "npm --prefix services/api run build",
+    "desktop:start": "npm --prefix apps/desktop run start",
+    "build-mobile": "npm run build-web && npm --prefix mobile run build",
+    "build-desktop": "npm run build-web && npm --prefix apps/desktop run build",
+    "clean": "node scripts/clean-project.mjs",
+    "build-all": "npm run build-web && npm run build-mobile && npm run build-desktop"
+  }
+}

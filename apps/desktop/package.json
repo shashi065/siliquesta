@@ -1,0 +1,18 @@
+{
+  "name": "siliquesta-desktop",
+  "version": "2.1.0",
+  "private": true,
+  "description": "SILIQUESTA Electron wrapper for Windows, macOS, and Linux",
+  "author": "SILIQUESTA",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "node pack.mjs",
+    "dist": "node pack.mjs"
+  },
+  "devDependencies": {
+    "@electron/packager": "^18.3.6",
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  }
+}

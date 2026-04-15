@@ -1,0 +1,24 @@
+# Binaries
+downloads/
+*.exe
+*.bin
+*.zip
+*.dmg
+*.AppImage
+
+# Android / Gradle
+mobile/android/.gradle-user-home/
+mobile/android/.gradle/
+mobile/android/build/
+
+# Temp
+output/
+spice_tmp/
+
+# General
+node_modules/
+dist/
+build/
+*.log
+*.tmp
+.env

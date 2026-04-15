@@ -1,0 +1,51 @@
+# SILIQUESTA - Production AI Service Dockerfile
+# Optimized for ML inference with proper dependencies
+
+FROM python:3.11-slim
+
+LABEL maintainer="SILIQUESTA Team"
+LABEL description="SILIQUESTA AI Service - Circuit Optimization Engine"
+LABEL version="2.0.0"
+
+WORKDIR /app
+
+# Install system dependencies with minimal bloat
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    gcc \
+    gfortran \
+    libopenblas-dev \
+    liblapack-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better layer caching
+COPY ai-engine/requirements.txt .
+
+# Install Python dependencies with specific versions
+RUN pip install --no-cache-dir \
+    --prefer-binary \
+    -r requirements.txt
+
+# Copy application code
+COPY ai-engine/ .
+
+# Create non-root user
+RUN useradd -m -u 1001 -s /sbin/nologin aiservice && \
+    chown -R aiservice:aiservice /app
+
+USER aiservice
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+EXPOSE 8000
+
+# Production ASGI server
+CMD ["uvicorn", "main:app", \
+     "--host", "0.0.0.0", \
+     "--port", "8000", \
+     "--workers", "4", \
+     "--log-level", "info"]

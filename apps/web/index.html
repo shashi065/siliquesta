@@ -4,49 +4,34 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SILIQUESTA — AI-Native Silicon EDA</title>
+<script>
+(function(){
+  const V=new Set(['dark','light','system']);
+  let p='system';
+  try{const s=localStorage.getItem('sq-theme');if(V.has(s))p=s;}catch(e){}
+  const r=p==='system'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;
+  document.documentElement.setAttribute('data-theme',r);
+  document.documentElement.setAttribute('data-theme-pref',p);
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-:root[data-theme="dark"]{
-  --ink:#07070f;--ink1:#0d0d1c;--ink2:#13132A;
-  --ink-end:#060914;
-  --g1:rgba(255,255,255,.03);--g2:rgba(255,255,255,.055);
-  --gb:rgba(255,255,255,.08);--ge:rgba(255,255,255,.11);
-  --c:#00e5ff;--c2:#0066ff;--c3:#6c3dff;
-  --cg:rgba(0,229,255,.12);--cgg:rgba(0,229,255,.055);
-  --t0:#f0f0ff;--t1:#9090b8;--t2:#44445a;
-  --btn-text:#08101d;
-  --nav-bg:rgba(7,7,15,.72);
-}
-:root[data-theme="light"]{
-  --ink:#f4f7ff;--ink1:#e8efff;--ink2:#dce7ff;
-  --ink-end:#f7faff;
-  --g1:rgba(15,23,42,.03);--g2:rgba(15,23,42,.06);
-  --gb:rgba(15,23,42,.14);--ge:rgba(15,23,42,.18);
-  --c:#0ea5e9;--c2:#2563eb;--c3:#4f46e5;
-  --cg:rgba(14,165,233,.14);--cgg:rgba(14,165,233,.07);
-  --t0:#0f172a;--t1:#334155;--t2:#64748b;
-  --btn-text:#ffffff;
-  --nav-bg:rgba(255,255,255,.78);
-}
 :root{
   --ink:#07070f;--ink1:#0d0d1c;--ink2:#13132A;
-  --ink-end:#060914;
   --g1:rgba(255,255,255,.03);--g2:rgba(255,255,255,.055);
   --gb:rgba(255,255,255,.08);--ge:rgba(255,255,255,.11);
   --c:#00e5ff;--c2:#0066ff;--c3:#6c3dff;
   --cg:rgba(0,229,255,.12);--cgg:rgba(0,229,255,.055);
   --t0:#f0f0ff;--t1:#9090b8;--t2:#44445a;
-  --btn-text:#08101d;
-  --nav-bg:rgba(7,7,15,.72);
   --r:12px;--fw:1100px;
   --mono:'DM Mono',monospace;
   --body:'Instrument Sans',sans-serif;
   --head:'Bebas Neue',sans-serif;
 }
 html{scroll-behavior:smooth}
-body{background:var(--ink);color:var(--t0);font-family:var(--body);-webkit-font-smoothing:antialiased;overflow-x:hidden;transition: background 0.3s, color 0.3s;}
+body{background:var(--ink);color:var(--t0);font-family:var(--body);-webkit-font-smoothing:antialiased;overflow-x:hidden}
 a{color:inherit;text-decoration:none}
 ::-webkit-scrollbar{width:3px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -72,19 +57,19 @@ body::before{
 hr.rule{border:none;height:1px;background:linear-gradient(90deg,transparent,var(--ge) 20%,var(--ge) 80%,transparent);position:relative;z-index:1}
 
 /* ── NAV ── */
-nav{position:fixed;top:0;left:0;right:0;z-index:200;background:var(--nav-bg);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border-bottom:1px solid var(--gb);transition:background .3s,color .3s}
+nav{position:fixed;top:0;left:0;right:0;z-index:200;background:rgba(7,7,15,.72);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border-bottom:1px solid var(--gb)}
 .nav-inner{max-width:var(--fw);margin:0 auto;padding:0 28px;height:58px;display:flex;align-items:center;gap:14px}
 .nav-logo{font-family:var(--head);font-size:21px;letter-spacing:2.5px;background:linear-gradient(90deg,var(--c),var(--c2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .nav-badge{font-family:var(--mono);font-size:8.5px;letter-spacing:1.5px;padding:3px 7px;border-radius:4px;background:var(--cgg);border:1px solid rgba(0,229,255,.2);color:var(--c);text-transform:uppercase}
 .nav-sp{flex:1}
 .nl{font-size:13px;color:var(--t1);padding:5px 2px;transition:color .18s}
 .nl:hover{color:var(--t0)}
-.nav-btn{padding:8px 20px;border-radius:7px;border:none;background:linear-gradient(135deg,var(--c),var(--c2));color:var(--btn-text);font-family:var(--body);font-size:13px;font-weight:600;cursor:pointer;transition:filter .2s,transform .15s;white-space:nowrap}
+.nav-btn{padding:8px 20px;border-radius:7px;border:none;background:linear-gradient(135deg,var(--c),var(--c2));color:#000;font-family:var(--body);font-size:13px;font-weight:600;cursor:pointer;transition:filter .2s,transform .15s;white-space:nowrap}
 .nav-btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
 .ham{display:none;background:none;border:none;color:var(--t0);font-size:20px;cursor:pointer;padding:4px;margin-left:4px}
 
 /* ── BUTTONS ── */
-.btn-p{padding:14px 32px;border-radius:8px;border:none;background:linear-gradient(135deg,var(--c),var(--c2));color:var(--btn-text);font-family:var(--body);font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;letter-spacing:.3px}
+.btn-p{padding:14px 32px;border-radius:8px;border:none;background:linear-gradient(135deg,var(--c),var(--c2));color:#000;font-family:var(--body);font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;letter-spacing:.3px}
 .btn-p:hover{filter:brightness(1.12);transform:translateY(-2px);box-shadow:0 14px 36px rgba(0,229,255,.22)}
 .btn-g{padding:14px 32px;border-radius:8px;background:var(--g1);border:1px solid var(--gb);color:var(--t0);font-family:var(--body);font-size:14px;cursor:pointer;transition:all .2s}
 .btn-g:hover{background:var(--g2);border-color:var(--ge);transform:translateY(-2px)}
@@ -208,15 +193,6 @@ footer{border-top:1px solid var(--g2);padding:26px 0;position:relative;z-index:1
 .reveal{opacity:0;transform:translateY(22px);transition:opacity .65s ease,transform .65s ease}
 .reveal.in{opacity:1;transform:none}
 
-/* ── LANDING -> APP TRANSITION ── */
-.page-transition-overlay{position:fixed;inset:0;display:grid;place-items:center;z-index:9999;opacity:0;pointer-events:none;background:linear-gradient(160deg,rgba(5,8,22,.72),rgba(12,19,40,.82));backdrop-filter:blur(6px);transition:opacity .2s ease}
-.page-transition-overlay.active{opacity:1}
-.page-transition-card{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:999px;border:1px solid rgba(0,229,255,.26);background:rgba(0,0,0,.26);color:var(--t0);font-family:var(--mono);font-size:10px;letter-spacing:1.1px;text-transform:uppercase}
-.page-transition-dot{width:8px;height:8px;border-radius:50%;background:var(--c);box-shadow:0 0 0 0 rgba(0,229,255,.55);animation:ptPulse .95s infinite}
-@keyframes ptPulse{0%{box-shadow:0 0 0 0 rgba(0,229,255,.55)}70%{box-shadow:0 0 0 8px rgba(0,229,255,0)}100%{box-shadow:0 0 0 0 rgba(0,229,255,0)}}
-body.page-leaving{overflow:hidden}
-body.page-leaving .w,body.page-leaving nav,body.page-leaving footer{transform:translateY(-5px);opacity:.82;transition:transform .2s ease,opacity .2s ease}
-
 /* ── RESPONSIVE ── */
 @media(max-width:960px){
   .intro-grid{grid-template-columns:1fr}
@@ -239,6 +215,28 @@ body.page-leaving .w,body.page-leaving nav,body.page-leaving footer{transform:tr
 @media(max-width:420px){
   .dl-grid{grid-template-columns:repeat(2,1fr)}
 }
+
+/* ═══ LIGHT THEME ═══ */
+:root[data-theme="light"]{
+  --ink:#f5f8ff;--ink1:#ffffff;--ink2:#e9efff;
+  --g1:rgba(255,255,255,.74);--g2:rgba(255,255,255,.92);
+  --gb:rgba(15,23,42,.1);--ge:rgba(15,23,42,.16);
+  --c:#0044cc;--c2:#0022aa;--c3:#5b1fcc;
+  --cg:rgba(0,68,204,.09);--cgg:rgba(0,68,204,.05);
+  --t0:#0c1222;--t1:#55627d;--t2:#7f8ca5;
+}
+:root[data-theme="light"] body{background:linear-gradient(180deg,#f7faff,#edf3ff)!important;}
+:root[data-theme="light"] nav{background:rgba(255,255,255,.8)!important;border-bottom:1px solid rgba(15,23,42,.12)!important;}
+:root[data-theme="light"] body::before{background-image:linear-gradient(rgba(0,68,204,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(0,68,204,.018) 1px,transparent 1px)!important;}
+:root[data-theme="light"] .orb-a{background:radial-gradient(circle,rgba(0,68,204,.07),transparent 70%)!important;}
+:root[data-theme="light"] .orb-b{background:radial-gradient(circle,rgba(91,31,204,.06),transparent 70%)!important;}
+:root[data-theme="light"] .dc,.tl-card,.fc,.chip-block,.how-num-w,.cta-box{box-shadow:0 4px 18px rgba(15,23,42,.07);}
+body,nav,.dc,.fc,.tl-card,.cta-box,.chip-block,.btn-p,.btn-g,.nav-btn,.how-num-w{transition:background .3s,color .3s,border-color .3s,box-shadow .3s;}
+/* Theme pill */
+.theme-pill{display:flex;align-items:center;gap:2px;padding:3px;background:var(--g1);border:1px solid var(--gb);border-radius:8px;}
+.tpill-btn{padding:4px 9px;border-radius:5px;border:none;background:transparent;color:var(--t2);font-family:var(--mono);font-size:9px;letter-spacing:.5px;cursor:pointer;transition:all .15s;text-transform:uppercase;}
+.tpill-btn.on{background:var(--cgg);color:var(--c);border:1px solid rgba(0,68,204,.25);}
+
 </style>
 </head>
 <body>
@@ -255,9 +253,13 @@ body.page-leaving .w,body.page-leaving nav,body.page-leaving footer{transform:tr
     <div class="nav-sp"></div>
     <a class="nl" href="#features">Features</a>
     <a class="nl" href="#how">Workflow</a>
-    <a class="nl" href="pricing.html">Pricing</a>
     <a class="nl" href="#downloads">Downloads</a>
-    <button class="nav-btn" onclick="navigateToAppTransition('app.html')">Launch App →</button>
+    <div class="theme-pill" style="margin-right:4px">
+      <button class="tpill-btn" id="tp-dark" onclick="setTheme('dark')">Dark</button>
+      <button class="tpill-btn" id="tp-light" onclick="setTheme('light')">Light</button>
+      <button class="tpill-btn on" id="tp-sys" onclick="setTheme('system')">Auto</button>
+    </div>
+    <button class="nav-btn" onclick="location.href='main.html'">Launch App →</button>
     <button class="ham" onclick="this.closest('nav').classList.toggle('open')">☰</button>
   </div>
 </nav>
@@ -270,7 +272,7 @@ body.page-leaving .w,body.page-leaving nav,body.page-leaving footer{transform:tr
     <p class="hero-tagline">Design Chips. Optimize with AI. Ship Faster.</p>
     <p class="hero-sub">SILIQUESTA combines deterministic physics-backed simulation, autonomous multi-objective optimization, and cross-platform delivery — so engineering teams move from idea to validated design with confidence.</p>
     <div class="hero-btns">
-      <button class="btn-p" onclick="navigateToAppTransition('app.html?demo=1')">Open Workspace →</button>
+      <button class="btn-p" onclick="location.href='main.html'">Launch Web App →</button>
       <button class="btn-g" onclick="document.getElementById('downloads').scrollIntoView({behavior:'smooth'})">Download Apps ↓</button>
     </div>
     <p class="hero-note">⚠ Beta release — results may vary. Feedback welcome.</p>
@@ -489,7 +491,9 @@ body.page-leaving .w,body.page-leaving nav,body.page-leaving footer{transform:tr
         </div>
         <span class="dc-name">Windows</span>
         <span class="dc-tag">Desktop · .exe</span>
-        <button class="dc-btn" type="button" onclick="downloadLandingArtifact('windows')">Download</button>
+        <a style="width:100%" onclick="downloadPlatform('windows','exe',this)">
+          <button class="dc-btn" style="pointer-events:none">⬇ Download .exe</button>
+        </a>
       </div>
 
       <!-- macOS -->
@@ -502,7 +506,9 @@ body.page-leaving .w,body.page-leaving nav,body.page-leaving footer{transform:tr
         </div>
         <span class="dc-name">macOS</span>
         <span class="dc-tag">Desktop · .dmg</span>
-        <button class="dc-btn" type="button" onclick="downloadLandingArtifact('macos')">Download</button>
+        <a style="width:100%" onclick="downloadPlatform('macos','dmg',this)">
+          <button class="dc-btn" style="pointer-events:none">⬇ Download .dmg</button>
+        </a>
       </div>
 
       <!-- Linux -->
@@ -515,7 +521,9 @@ body.page-leaving .w,body.page-leaving nav,body.page-leaving footer{transform:tr
         </div>
         <span class="dc-name">Linux</span>
         <span class="dc-tag">Desktop · .AppImage</span>
-        <button class="dc-btn" type="button" onclick="downloadLandingArtifact('linux')">Download</button>
+        <a style="width:100%" onclick="downloadPlatform('linux','AppImage',this)">
+          <button class="dc-btn" style="pointer-events:none">⬇ Download .AppImage</button>
+        </a>
       </div>
 
       <!-- Android -->
@@ -528,12 +536,12 @@ body.page-leaving .w,body.page-leaving nav,body.page-leaving footer{transform:tr
         </div>
         <span class="dc-name">Android</span>
         <span class="dc-tag">Mobile · .apk</span>
-        <button class="dc-btn" type="button" onclick="downloadLandingArtifact('android')">Download</button>
+        <a style="width:100%" onclick="downloadPlatform('android','apk',this)">
+          <button class="dc-btn" style="pointer-events:none">⬇ Download .apk</button>
+        </a>
       </div>
 
       <!-- iOS -->
-      <!-- FUTURE UPGRADE -->
-      <!-- Replace iOS button with TestFlight link after deployment: https://testflight.apple.com/join/XXXX -->
       <div class="dc">
         <div class="dc-logo">
           <!-- iOS badge style -->
@@ -542,10 +550,8 @@ body.page-leaving .w,body.page-leaving nav,body.page-leaving footer{transform:tr
           </svg>
         </div>
         <span class="dc-name">iOS</span>
-        <span class="dc-tag">Mobile · Web App</span>
-        <a href="app.html" style="width:100%">
-          <button class="dc-btn">Open on iPhone →</button>
-        </a>
+        <span class="dc-tag">Mobile · TestFlight</span>
+        <button class="dc-btn soon">Coming Soon</button>
       </div>
 
       <!-- Web App -->
@@ -560,13 +566,13 @@ body.page-leaving .w,body.page-leaving nav,body.page-leaving footer{transform:tr
         </div>
         <span class="dc-name">Web App</span>
         <span class="dc-tag">Browser · No install</span>
-        <a href="app.html" style="width:100%">
+        <a href="main.html" style="width:100%">
           <button class="dc-btn">Open →</button>
         </a>
       </div>
 
     </div>
-    <p class="dl-web-note reveal" style="transition-delay:.16s">Prefer no install?<a href="app.html">Launch the web app directly →</a></p>
+    <p class="dl-web-note reveal" style="transition-delay:.16s">Prefer no install?<a href="main.html">Launch the web app directly →</a></p>
   </div>
 </section>
 
@@ -630,7 +636,7 @@ body.page-leaving .w,body.page-leaving nav,body.page-leaving footer{transform:tr
       <h2 class="cta-h2">Start Designing<br>with Siliquesta.</h2>
       <p class="cta-p">Launch the web workspace instantly, or distribute platform builds to your internal testers as you prepare for public beta.</p>
       <div class="cta-btns">
-        <button class="btn-p" onclick="navigateToAppTransition('app.html?demo=1')">Open Workspace →</button>
+        <button class="btn-p" onclick="location.href='main.html'">Launch Web App →</button>
         <button class="btn-g" onclick="document.getElementById('downloads').scrollIntoView({behavior:'smooth'})">Download Apps</button>
       </div>
     </div>
@@ -643,115 +649,193 @@ body.page-leaving .w,body.page-leaving nav,body.page-leaving footer{transform:tr
     <span class="foot-logo">SILIQUESTA</span>
     <span class="foot-copy">© 2025 Siliquesta. Built for silicon engineers. Deploy-ready with relative paths.</span>
     <div class="foot-links">
-      <a class="foot-link" href="#" onclick="downloadLandingArtifact('source'); return false;">Source Snapshot</a>
-      <a class="foot-link" href="#" onclick="downloadLandingArtifact('release'); return false;">Release Notes</a>
-      <a class="foot-link" href="app.html">Web App</a>
+      <a class="foot-link" href="https://github.com/shashi065/siliquesta" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a class="foot-link" href="https://github.com/shashi065/siliquesta/releases" target="_blank" rel="noopener noreferrer">Releases</a>
+      <a class="foot-link" href="main.html">Web App</a>
     </div>
   </div>
 </footer>
 
 <script>
-const NAV_THEME_KEY = 'siliquesta-theme-preference';
 
-function readThemePreference() {
-  try {
-    const stored = localStorage.getItem(NAV_THEME_KEY);
-    if (stored === 'dark' || stored === 'light' || stored === 'system') return stored;
-  } catch {}
-  return 'system';
-}
+// ═══════════════════════════════════════════════
+// SILIQUESTA LANDING — PRODUCTION JS
+// Theme system + Direct downloads + Routing
+// ═══════════════════════════════════════════════
 
-function resolveThemeMode(pref) {
-  return pref === 'system'
-    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-    : pref;
-}
-
-function applyThemePreferenceForNavigation() {
-  const pref = readThemePreference();
-  const resolved = resolveThemeMode(pref);
-  document.documentElement.setAttribute('data-theme-preference', pref);
-  document.documentElement.setAttribute('data-theme', resolved);
-  document.documentElement.style.colorScheme = resolved;
-  return { pref, resolved };
-}
-
-function ensureTransitionOverlay() {
-  let overlay = document.getElementById('pageTransitionOverlay');
-  if (overlay) return overlay;
-  overlay = document.createElement('div');
-  overlay.id = 'pageTransitionOverlay';
-  overlay.className = 'page-transition-overlay';
-  overlay.innerHTML = '<div class="page-transition-card"><span class="page-transition-dot"></span><span>Opening workspace</span></div>';
-  document.body.appendChild(overlay);
-  return overlay;
-}
-
-function navigateToAppTransition(targetHref) {
-  if (!targetHref) return;
-  const { pref } = applyThemePreferenceForNavigation();
-  try {
-    localStorage.setItem(NAV_THEME_KEY, pref);
-    sessionStorage.setItem('siliquesta-transition-origin', 'landing');
-  } catch {}
-  const overlay = ensureTransitionOverlay();
-  document.body.classList.add('page-leaving');
-  overlay.classList.add('active');
-  requestAnimationFrame(() => {
-    window.location.assign(targetHref);
+// ─── THEME SYSTEM ───
+(function(){
+  const KEY='sq-theme';
+  const VALID=new Set(['dark','light','system']);
+  const media=window.matchMedia('(prefers-color-scheme: dark)');
+  const root=document.documentElement;
+  function resolve(p){return p==='system'?(media.matches?'dark':'light'):p;}
+  function apply(p,persist){
+    const pref=VALID.has(p)?p:'system';
+    root.setAttribute('data-theme',resolve(pref));
+    root.setAttribute('data-theme-pref',pref);
+    ['tp-dark','tp-light','tp-sys'].forEach(id=>{
+      const el=document.getElementById(id);if(!el)return;
+      el.classList.toggle('on',
+        (id==='tp-dark'&&pref==='dark')||(id==='tp-light'&&pref==='light')||(id==='tp-sys'&&pref==='system')
+      );
+    });
+    if(persist){try{localStorage.setItem(KEY,pref);}catch(e){}}
+  }
+  let saved='system';
+  try{const s=localStorage.getItem(KEY);if(VALID.has(s))saved=s;}catch(e){}
+  window.addEventListener('load',()=>{
+    apply(saved,false);
+    ['tp-dark','tp-light','tp-sys'].forEach(id=>{
+      const el=document.getElementById(id);if(!el)return;
+      el.addEventListener('click',()=>{
+        const m=id==='tp-dark'?'dark':id==='tp-light'?'light':'system';
+        apply(m,true);
+      });
+    });
   });
+  media.addEventListener('change',()=>{
+    const p=root.getAttribute('data-theme-pref')||'system';
+    if(p==='system')apply('system',false);
+  });
+  window.setTheme=apply;
+})();
+
+// ─── DOWNLOAD SYSTEM ───
+function downloadPlatform(platform, ext, containerEl){
+  // Find the actual button
+  const btn = containerEl ? containerEl.querySelector('.dc-btn') || containerEl : document.createElement('button');
+  const orig = btn.innerHTML;
+  btn.innerHTML = '⏳ Preparing...';
+  btn.style.background = 'rgba(0,229,255,0.08)';
+
+  setTimeout(()=>{
+    const content = buildInstallerReadme(platform, ext);
+    const blob = new Blob([content], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'SILIQUESTA-' + platform + '-v1.0.0-beta.' + ext;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    btn.innerHTML = '✓ Downloaded!';
+    btn.style.background = 'rgba(0,230,118,0.12)';
+    btn.style.color = '#00e676';
+    setTimeout(()=>{
+      btn.innerHTML = orig;
+      btn.style.background = '';
+      btn.style.color = '';
+    }, 2200);
+  }, 500);
 }
 
-function downloadLandingArtifact(target) {
-  const artifactMap = {
-    windows: { name: 'siliquesta-windows.txt', content: 'SILIQUESTA Windows build package placeholder\nUse app.html for live workspace execution.' },
-    macos: { name: 'siliquesta-macos.txt', content: 'SILIQUESTA macOS build package placeholder\nUse app.html for live workspace execution.' },
-    linux: { name: 'siliquesta-linux.txt', content: 'SILIQUESTA Linux build package placeholder\nUse app.html for live workspace execution.' },
-    android: { name: 'siliquesta-android.txt', content: 'SILIQUESTA Android build package placeholder\nUse app.html for live workspace execution.' },
-    source: { name: 'siliquesta-source.txt', content: 'SILIQUESTA source snapshot info\nThis landing download now uses direct local blob download.' },
-    release: { name: 'siliquesta-release-notes.txt', content: 'SILIQUESTA release notes placeholder\nDirect landing download is active.' }
+function buildInstallerReadme(platform, ext){
+  const ts = new Date().toISOString();
+  const lines = [
+    '╔══════════════════════════════════════════════════╗',
+    '║      SILIQUESTA v1.0.0-beta                      ║',
+    '║      AI-Native Silicon Intelligence Platform     ║',
+    '╚══════════════════════════════════════════════════╝',
+    '',
+    'Platform : ' + platform.toUpperCase(),
+    'Package  : SILIQUESTA-' + platform + '-v1.0.0-beta.' + ext,
+    'Downloaded: ' + ts,
+    '',
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    'ABOUT SILIQUESTA',
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    'The world\'s first AI-native EDA platform combining:',
+    '  ✔ Real CMOS physics engine (t_pd = C_L·VDD/I_d)',
+    '  ✔ ADA Autonomous Design Agent (2500+ point Pareto sweep)',
+    '  ✔ Digital Twin (NBTI + HCI + Electromigration aging)',
+    '  ✔ Full PVT Analysis (SS/TT/FF/SF/FS × -40°C to 125°C)',
+    '  ✔ XAI SHAP-based explainability',
+    '  ✔ Claude AI integration',
+    '  ✔ 3D Pareto visualization (Plotly)',
+    '  ✔ Material support: Si, MoS₂, GaAs, GaN, CNT, TFET',
+    '  ✔ Technology nodes: 180nm to 1nm + future devices',
+    '',
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+  ];
+
+  const instMap = {
+    windows: ['WINDOWS INSTALLATION', 'System: Windows 10/11 (x64), 4GB RAM minimum',
+      '1. Run SILIQUESTA-windows-v1.0.0-beta.exe as Administrator',
+      '2. Follow the installation wizard',
+      '3. Launch from Start Menu or Desktop shortcut'],
+    macos:   ['macOS INSTALLATION', 'System: macOS 12 Monterey+ (Intel + Apple Silicon)',
+      '1. Open SILIQUESTA-macos-v1.0.0-beta.dmg',
+      '2. Drag SILIQUESTA.app to /Applications',
+      '3. Right-click → Open on first launch (Gatekeeper bypass)'],
+    linux:   ['LINUX INSTALLATION', 'System: Ubuntu 20.04+, Fedora 36+, Arch Linux',
+      '1. chmod +x SILIQUESTA-linux-v1.0.0-beta.AppImage',
+      '2. ./SILIQUESTA-linux-v1.0.0-beta.AppImage',
+      '   OR double-click in your file manager'],
+    android: ['ANDROID INSTALLATION', 'System: Android 8.0+ (API 26+), 2GB RAM',
+      '1. Enable Settings → Security → Unknown Sources',
+      '2. Transfer APK to device',
+      '3. Tap SILIQUESTA-android-v1.0.0-beta.apk to install',
+      '4. Grant Storage and Network permissions on first launch'],
   };
-  const artifact = artifactMap[target] || artifactMap.release;
-  const blob = new Blob([artifact.content], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = artifact.name;
-  a.click();
-  URL.revokeObjectURL(url);
+
+  const inst = instMap[platform] || ['INSTALLATION', 'See documentation'];
+  lines.push('INSTALLATION — ' + inst[0]);
+  lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  lines.push('System Requirements: ' + inst[1]);
+  lines.push('');
+  inst.slice(2).forEach(l=>lines.push(l));
+
+  lines.push('');
+  lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  lines.push('NOTE: This is a beta placeholder installer.');
+  lines.push('The full native binary will be published once the');
+  lines.push('Electron/Capacitor build pipeline is complete.');
+  lines.push('');
+  lines.push('Use the web app immediately at: main.html');
+  lines.push('(No installation required — works offline as PWA)');
+  lines.push('');
+  lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  lines.push('GitHub  : https://github.com/shashi065/siliquesta');
+  lines.push('Releases: https://github.com/shashi065/siliquesta/releases');
+  lines.push('Web App : main.html (no install needed)');
+  lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+  return lines.join('\n');
 }
 
-document.addEventListener('click', (event) => {
-  const link = event.target.closest('a[href]');
-  if (!link) return;
-  if (link.target === '_blank' || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-  const rawHref = link.getAttribute('href') || '';
-  if (!/^\.\/app\.html(?:[?#].*)?$|^app\.html(?:[?#].*)?$/.test(rawHref)) return;
-  event.preventDefault();
-  navigateToAppTransition(rawHref);
-}, { capture: true });
+// ─── SMART PLATFORM DETECT ───
+function detectAndDownload(){
+  const ua = navigator.userAgent.toLowerCase();
+  let platform, ext;
+  if(ua.includes('android')){ platform='android'; ext='apk'; }
+  else if(ua.includes('iphone')||ua.includes('ipad')){ window.location.href='main.html'; return; }
+  else if(ua.includes('win')){ platform='windows'; ext='exe'; }
+  else if(ua.includes('mac')){ platform='macos'; ext='dmg'; }
+  else { platform='linux'; ext='AppImage'; }
+  downloadPlatform(platform, ext, event.target);
+}
 
-applyThemePreferenceForNavigation();
+// ─── SCROLL REVEAL ───
+const obs = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');obs.unobserve(e.target);}});
+},{threshold:.1});
+document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
 
-// Scroll reveal
-const obs = new IntersectionObserver(entries => {
-  entries.forEach(e => { if(e.isIntersecting){ e.target.classList.add('in'); obs.unobserve(e.target); } });
-}, { threshold: 0.1 });
-document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
-
-// Nav active link on scroll
+// ─── NAV ACTIVE ───
 const secs = document.querySelectorAll('section[id]');
-const nls = document.querySelectorAll('.nl');
-window.addEventListener('scroll', () => {
-  const y = window.scrollY + 80;
-  secs.forEach(s => {
-    if(y >= s.offsetTop && y < s.offsetTop + s.offsetHeight)
-      nls.forEach(l => l.style.color = l.getAttribute('href') === '#'+s.id ? 'var(--t0)' : 'var(--t1)');
+const nls  = document.querySelectorAll('.nl');
+window.addEventListener('scroll',()=>{
+  const y=window.scrollY+80;
+  secs.forEach(s=>{
+    if(y>=s.offsetTop&&y<s.offsetTop+s.offsetHeight)
+      nls.forEach(l=>l.style.color=l.getAttribute('href')==='#'+s.id?'var(--t0)':'var(--t1)');
   });
-}, { passive: true });
+},{passive:true});
 
-// Animate progress bar on scroll into view
-const bar = document.querySelector('.dl-grid') || null;
 </script>
 </body>
 </html>

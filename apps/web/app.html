@@ -2602,6 +2602,8 @@ const STORAGE_KEYS = {
   plan:'sq_plan',
   workspace:'sq_workspace'
 };
+const API = "http://localhost:8000";
+let lastResult = null;
 const DEFAULT_API_BASE = (window.SILIQUESTA_SHARED_CONFIG && window.SILIQUESTA_SHARED_CONFIG.API_BASE) || window.SILIQUESTA_API_BASE || 'http://127.0.0.1:8000/api/v1';
 
 // ── Material Database ──
@@ -2828,6 +2830,158 @@ function normalizeRunMetrics(raw){
     id_n:+(value('id_n','id_nmos','current_ua','drive_current_ua') ?? fallback.id_n).toFixed(3),
     vth:+(value('vth','v_th','threshold_v') ?? fallback.vth).toFixed(4)
   };
+}
+function syncSQStateFromS(){
+  SQ.state.wn = S.wn;
+  SQ.state.wp = S.wp;
+  SQ.state.vdd = S.vdd;
+  SQ.state.temp = S.temp;
+  SQ.state.cl = S.cl;
+  SQ.state.node = S.techNode;
+  SQ.state.corner = S.corner;
+}
+function updateUI(data){
+  const r = normalizeRunMetrics(data);
+  lastResult = r;
+  ['d-freq','d-pow','d-dly'].forEach((id,i)=>{
+    const el=document.getElementById(id);
+    const vals=[r.freq.toFixed(3),r.power.toFixed(3),r.delay.toFixed(3)];
+    if(el) el.textContent=vals[i];
+  });
+  setLive(r);
+  S.runCount++;
+  const entry = {
+    id:S.runCount,
+    ts:new Date().toLocaleTimeString(),
+    corner:S.corner,
+    wn:S.wn,
+    wp:S.wp,
+    vdd:S.vdd,
+    temp:S.temp,
+    cl:S.cl,
+    node:S.techNode,
+    source:'backend',
+    ...r
+  };
+  S.results.push(entry);
+  updateResultsTable();
+  updateDashRuns(r);
+  refreshCharts();
+  updatePreviewCards(r);
+  updateExecutiveDashboard(r);
+  updateDashboardPreview(r);
+  document.getElementById('rc').textContent = S.runCount;
+  document.getElementById('st-txt').textContent = 'READY';
+  persistWorkspace();
+  return r;
+}
+function updateTwin(data){
+  const d = normalizeRunMetrics(data);
+  lastResult = d;
+  const freqEl = document.getElementById("freq");
+  const powerEl = document.getElementById("power");
+  const delayEl = document.getElementById("delay");
+  if(freqEl) freqEl.innerText = d.freq.toFixed(2);
+  if(powerEl) powerEl.innerText = d.power.toFixed(2);
+  if(delayEl) delayEl.innerText = d.delay.toFixed(2);
+}
+function saveDesign(result){
+  let db = JSON.parse(localStorage.getItem("designs")||"[]");
+  db.push({
+    params: {...SQ.state},
+    result
+  });
+  localStorage.setItem("designs", JSON.stringify(db));
+  const r = normalizeRunMetrics(result);
+  S.dna.push({
+    id:Date.now(),
+    name:`${S.corner}@${formatTechNode(S.techNode)} — ${r.freq}GHz`,
+    type:'design',
+    params:currentDesignParams(),
+    results:r,
+    ts:new Date().toISOString()
+  });
+  saveDNAStore();
+  renderDNA();
+}
+function updateParetoChart(data){
+  const rows = Array.isArray(data) ? data.map((row, i) => ({
+    rank:i+1,
+    ...normalizeRunMetrics(row),
+    wn:Number(row.wn ?? S.wn),
+    wp:Number(row.wp ?? S.wp)
+  })) : [];
+  renderADAResults(rows.slice(0, 8), rows, rows.length, 'backend');
+}
+function renderTwinChart(timeline){
+  if(!Array.isArray(timeline) || !timeline.length) return;
+  const last = timeline[timeline.length - 1];
+  const health = Math.max(0, 100 - (timeline.length - 1) * 4);
+  const hdEl = document.getElementById('d-hlth');
+  if(hdEl) hdEl.textContent = health.toFixed(1);
+  const metrics = document.getElementById('twin-metrics');
+  if(metrics){
+    metrics.innerHTML = `
+      <div class="twin-metric"><div class="tm-label">Silicon Health Score</div><div class="tm-val" style="color:${health>85?'var(--emerald)':health>70?'var(--amber)':'var(--rose)'}">${health.toFixed(1)}%</div></div>
+      <div class="twin-metric"><div class="tm-label">Degraded Frequency</div><div class="tm-val" style="color:var(--lum)">${Number(last.freq).toFixed(4)} GHz</div></div>
+      <div class="twin-metric"><div class="tm-label">Power Increase</div><div class="tm-val" style="color:var(--amber)">+${(((Number(last.power)-Number(lastResult?.power||last.power))/Math.max(Number(lastResult?.power||last.power),0.0001))*100).toFixed(2)}%</div></div>
+      <div class="twin-metric"><div class="tm-label">Delay Increase</div><div class="tm-val" style="color:var(--rose)">+${(((Number(last.delay)-Number(lastResult?.delay||last.delay))/Math.max(Number(lastResult?.delay||last.delay),0.0001))*100).toFixed(2)}%</div></div>
+    `;
+  }
+  const aging = document.getElementById('twin-aging');
+  if(aging){
+    aging.innerHTML = timeline.map(point => `
+      <div class="twin-metric">
+        <div class="tm-label">Year ${point.t}</div>
+        <div style="font-family:var(--f-mono);font-size:12px;margin-top:6px">${Number(point.freq).toFixed(3)} GHz · ${Number(point.power).toFixed(3)} mW · ${Number(point.delay).toFixed(3)} ps</div>
+      </div>
+    `).join('');
+  }
+  if(S.charts.twin){S.charts.twin.destroy();delete S.charts.twin;}
+  S.charts.twin = new Chart(document.getElementById('c-twin').getContext('2d'),{
+    type:'line',
+    data:{
+      labels:timeline.map(point=>`Y${point.t}`),
+      datasets:[
+        {label:'Frequency',data:timeline.map(point=>Number(point.freq)),borderColor:'#00f5ff',backgroundColor:'rgba(0,245,255,0.07)',borderWidth:1.5,fill:true,tension:0.4,pointRadius:2},
+        {label:'Power',data:timeline.map(point=>Number(point.power)),borderColor:'#ffb300',backgroundColor:'rgba(255,179,0,0.02)',borderWidth:1.2,fill:false,tension:0.35,pointRadius:2},
+        {label:'Delay',data:timeline.map(point=>Number(point.delay)),borderColor:'#ff4b6e',backgroundColor:'rgba(255,75,110,0.02)',borderWidth:1.2,fill:false,tension:0.35,pointRadius:2}
+      ]
+    },
+    options:chartOptions({
+      plugins:{...chartOptions().plugins,legend:{display:true,labels:{color:cssVar('--t1'),font:{size:10}}}},
+      scales:{x:{title:{display:true,text:'Time'}},y:{title:{display:true,text:'Metric value'}}}
+    })
+  });
+  S.stale.twin=false;
+  persistWorkspace();
+}
+async function handleAI(prompt) {
+  syncSQStateFromS();
+  const res = await fetch(`${API}/ai`, {
+    method:"POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({
+      prompt: prompt,
+      state: SQ.state
+    })
+  });
+  const data = await res.json();
+  updateUI(data);
+  return normalizeRunMetrics(data);
+}
+function handleLocalAI(cmd){
+  const text = String(cmd || '').toLowerCase();
+  if(text.includes("power")) SQ.state.vdd -= 0.1;
+  if(text.includes("speed")) SQ.state.wn += 0.2;
+  S.vdd = SQ.state.vdd;
+  S.wn = SQ.state.wn;
+  const wnEl = document.getElementById('wn');
+  const vddEl = document.getElementById('vdd');
+  if(wnEl) wnEl.value = S.wn;
+  if(vddEl) vddEl.value = S.vdd;
+  onParam();
+  runSim();
 }
 function buildCurrentContext(){
   const latest=S.results.slice(-1)[0];
@@ -3354,75 +3508,22 @@ async function runSim() {
   }
   document.getElementById('st-txt').textContent='ACTIVE';
   try{
-    let r;
-    let source='backend';
-    try{
-      const response = await apiRequest('/simulate',{
-        method:'POST',
-        body:{
-          wn:S.wn, wp:S.wp, vdd:S.vdd, temp:S.temp,
-          cl_ff:S.cl, corner:S.corner, tech_node:S.techNode
-        }
-      });
-      r = normalizeRunMetrics(await resolveMaybeJob(response, 'simulation'));
-    }catch(error){
-      if(String(error.message||'').includes('SPICE_REQUIRED')){
-        throw error;
-      }
-      source='local';
-      r = cmos(S.wn,S.wp,S.vdd,S.temp,S.cl,S.corner,S.techNode);
-      /* silent: local physics fallback active */
-    }
-    r = normalizeRunMetrics(r);
-
-    ['d-freq','d-pow','d-dly'].forEach((id,i)=>{
-      const el=document.getElementById(id);
-      const vals=[r.freq.toFixed(3),r.power.toFixed(3),r.delay.toFixed(3)];
-      if(el){ el.style.transform='scale(1.08)'; el.textContent=vals[i]; setTimeout(()=>{el.style.transition='transform 0.3s';el.style.transform='scale(1)'},60); }
+    syncSQStateFromS();
+    const res = await fetch(`${API}/simulate`, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(SQ.state)
     });
-
-    setLive(r);
-
-    S.runCount++;
-    const entry = {
-      id:S.runCount, ts:new Date().toLocaleTimeString(), corner:S.corner,
-      wn:S.wn, wp:S.wp, vdd:S.vdd, temp:S.temp, cl:S.cl, node:S.techNode, source, ...r
-    };
-    S.results.push(entry);
-    updateResultsTable();
-    updateDashRuns(r);
-    refreshCharts();
-    updatePreviewCards(r);
+    const data = await res.json();
+    updateUI(data);
+    updateTwin(data);
+    showInsight(data);
+    saveDesign(data);
     markDerivedPanelsDirty();
-    if(getSettings().autoSave){
-      S.dna.push({id:Date.now(),name:`${S.corner}@${formatTechNode(S.techNode)} — ${r.freq}GHz`,
-        type:'design',params:currentDesignParams(),results:r,ts:new Date().toISOString()});
-      saveDNAStore();
-      renderDNA();
-    }
-
-    if(S.charts.dash){
-      S.charts.dash.data.labels.push('#'+S.runCount);
-      S.charts.dash.data.datasets[0].data.push(r.freq);
-      if(S.charts.dash.data.labels.length>20){
-        S.charts.dash.data.labels.shift();
-        S.charts.dash.data.datasets[0].data.shift();
-      }
-      S.charts.dash.update();
-    }
-    if(S.charts.hist){
-      S.charts.hist.data.labels.push('#'+S.runCount);
-      S.charts.hist.data.datasets[0].data.push(r.freq);
-      S.charts.hist.update();
-    }
-
-    document.getElementById('rc').textContent=S.runCount;
-    document.getElementById('st-txt').textContent='READY';
     updateParamDisplay();
-    persistWorkspace();
-  }catch(error){
+  } catch (e) {
     document.getElementById('st-txt').textContent='CHECK';
-    notify(`Simulation failed: ${error.message}`, 'error');
+    alert("Backend not running");
   }finally{
     if(btn){
       btn.disabled=false;
@@ -3871,66 +3972,23 @@ function renderADAResults(top, candidates, totalCount, source='backend') {
 }
 
 async function runADA() {
-  const obj = document.querySelector('input[name="obj"]:checked')?.value||'pareto';
-  const maxP = +document.getElementById('mp').value;
-  const minF = +document.getElementById('mf').value;
   const statusEl = document.getElementById('ada-status');
   const barEl = document.getElementById('ada-bar');
   const countEl = document.getElementById('ada-count');
 
   statusEl.textContent='ADA scanning design space...';
-  barEl.style.width='8%';
+  barEl.style.width='25%';
   countEl.textContent='0';
-  let progress=8;
-  const progressTimer=setInterval(()=>{
-    progress=Math.min(progress+7,92);
-    barEl.style.width=progress+'%';
-  },180);
 
   try{
-    let candidates=buildLocalADACandidates(maxP,minF);
-    let exactCount=candidates.length;
-    let top=[];
-    let source='backend';
-
-    try{
-      const response=await apiRequest('/optimize',{
-        method:'POST',
-        body:{
-          wn:S.wn, wp:S.wp, vdd:S.vdd, temp:S.temp, cl_ff:S.cl, tech_node:S.techNode, corner:S.corner,
-          max_power:maxP, min_freq:minF, objective:obj
-        }
-      });
-      const resolved=await resolveMaybeJob(response, 'optimizer');
-      const rows=resolved.optimal || resolved.ranked_solutions || resolved.pareto_front || resolved.solutions || [];
-      top=rows.map((row,i)=>({rank:i+1,...normalizeRunMetrics(row), wn:Number(row.wn ?? row.WN ?? S.wn), wp:Number(row.wp ?? row.WP ?? S.wp)}));
-      if(!top.length){
-        if(!candidates.length){
-          candidates=buildLocalADACandidates(Number.POSITIVE_INFINITY,0);
-          source='relaxed';
-        }else{
-          source='local';
-        }
-        top=sortADACandidates(candidates,obj).slice(0,8);
-      }
-      renderADAResults(top,candidates,resolved.valid_candidates ?? exactCount ?? candidates.length,source);
-    }catch(error){
-      source='local';
-      /* silent: local optimizer fallback active */
-      candidates=buildLocalADACandidates(maxP,minF);
-      exactCount=candidates.length;
-      if(!candidates.length){
-        candidates=buildLocalADACandidates(Number.POSITIVE_INFINITY,0);
-        source='relaxed';
-      }
-      top=sortADACandidates(candidates,obj).slice(0,8);
-      renderADAResults(top,candidates,exactCount,source);
-    }
+    const res = await fetch(`${API}/optimize`);
+    const data = await res.json();
+    SQ.pareto = data;
+    updateParetoChart(data);
+    countEl.textContent = Array.isArray(data) ? String(data.length) : '0';
+    barEl.style.width='100%';
   }catch(error){
     statusEl.textContent=`ADA failed: ${error.message}`;
-  }finally{
-    clearInterval(progressTimer);
-    barEl.style.width='100%';
   }
 }
 
@@ -3938,140 +3996,17 @@ async function runADA() {
 // DIGITAL TWIN
 // ═══════════════════════════════════════════════════
 async function runTwin() {
-  const years = +document.getElementById('twin-years').value;
-  const r0 = normalizeRunMetrics(S.results.slice(-1)[0] || cmos(S.wn,S.wp,S.vdd,S.temp,S.cl,S.corner,S.techNode));
-  let twin;
-  let source='backend';
-
-  try{
-    const response=await apiRequest('/twin/compute-aging',{
-      method:'POST',
-      body:{wn:S.wn,wp:S.wp,vdd:S.vdd,temp:S.temp,cl_ff:S.cl,tech_node:S.techNode,corner:S.corner,years}
+  try {
+    const res = await fetch(`${API}/twin`, {
+      method:"POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(lastResult || normalizeRunMetrics(S.results.slice(-1)[0] || cmos(S.wn,S.wp,S.vdd,S.temp,S.cl,S.corner,S.techNode)))
     });
-    twin=await resolveMaybeJob(response, 'digital twin');
-  }catch(error){
-    source='local';
-    /* silent: local aging model fallback active */
-    const normYears=Math.max(years/10,0.1);
-    const stress=Math.max(S.vdd/1.0,0.6);
-    const thermal=Math.max((S.temp+40)/165,0.15);
-    const geom=Math.max(0.75, Math.min((S.wn+S.wp)/2.5, 1.6));
-    const techFactor=Math.max(1, 28/Math.max(S.techNode,0.3));
-    const dVth_nbti = 8.5 * Math.pow(normYears,0.24) * Math.pow(stress,1.55) * Math.pow(thermal,1.15) * techFactor / geom;
-    const dId_hci = 1.6 * Math.pow(normYears,0.42) * Math.pow(stress,2.1) * Math.pow(thermal,1.2) * techFactor / geom;
-    const mtf_em = Math.max(3, 42 * geom * Math.exp((95-S.temp)/70) / Math.pow(stress,2.8));
-    const healthScore = Math.max(55, Math.min(99.2, 100 - dVth_nbti*0.55 - dId_hci*1.9 - Math.max(0,10-mtf_em)*0.7));
-    twin={
-      years,
-      nbti_dvth_mv:+dVth_nbti.toFixed(2),
-      hci_did_percent:+dId_hci.toFixed(3),
-      mtf_years:+mtf_em.toFixed(2),
-      health_score:+healthScore.toFixed(2),
-      recommendations:{status:'LOCAL',action:'Using local aging estimator',vdd_boost:0}
-    };
+    const timeline = await res.json();
+    renderTwinChart(timeline);
+  } catch (e) {
+    alert("Backend not running");
   }
-
-  const health = Math.max(0, Math.min(100, Number(twin.health_score ?? twin.health ?? twin.silicon_health)||0));
-  const freq_deg = +(r0.freq * Math.max(health/100, 0.6)).toFixed(4);
-  const freq_loss = +((1-freq_deg/r0.freq)*100).toFixed(2);
-  const powerIncreasePct = +Math.max((Number(twin.nbti_dvth_mv)||0)/50, 0).toFixed(2);
-  const pow_incr = +(r0.power * (1 + powerIncreasePct/100)).toFixed(4);
-  const emRiskScore = Math.max(3, Math.min(99,
-    100 - Number(twin.mtf_years||0) * 1.5 + years * 1.2 + Math.max(0,S.temp-27) * 0.18 + Math.max(0,S.vdd-1.0) * 24 + S.cl * 0.06
-  ));
-  const emRiskLabel = emRiskScore < 32 ? 'LOW' : emRiskScore < 60 ? 'MODERATE' : emRiskScore < 82 ? 'HIGH' : 'CRITICAL';
-  const emCurrentDensity = +(Math.max(r0.id_n,1) / Math.max(S.wn,0.1) / 1000).toFixed(3);
-
-  // Update KPI health
-  const hdEl = document.getElementById('d-hlth');
-  if(hdEl) hdEl.textContent = health.toFixed(1);
-
-  // Metrics
-  document.getElementById('twin-metrics').innerHTML=`
-    <div class="twin-metric">
-      <div class="tm-label">Silicon Health Score</div>
-      <div class="tm-val" style="color:${health>85?'var(--emerald)':health>70?'var(--amber)':'var(--rose)'}">
-        ${health.toFixed(1)}%
-        <span class="health-badge ${health>85?'h-good':health>70?'h-warn':'h-crit'}">${health>85?'HEALTHY':health>70?'AGING':'CRITICAL'}</span>
-      </div>
-    </div>
-    <div class="twin-metric">
-      <div class="tm-label">Degraded Frequency</div>
-      <div class="tm-val" style="color:var(--lum)">${freq_deg.toFixed(4)} GHz</div>
-    </div>
-    <div class="twin-metric">
-      <div class="tm-label">Frequency Loss</div>
-      <div class="tm-val" style="color:var(--rose)">-${freq_loss.toFixed(2)}%</div>
-    </div>
-    <div class="twin-metric">
-      <div class="tm-label">Power Increase</div>
-      <div class="tm-val" style="color:var(--amber)">+${powerIncreasePct.toFixed(2)}%</div>
-    </div>
-    <div class="twin-metric">
-      <div class="tm-label">EM Mean Time to Failure</div>
-      <div class="tm-val" style="color:var(--emerald)">${Number(twin.mtf_years).toFixed(1)} yrs</div>
-    </div>
-    <div class="twin-metric">
-      <div class="tm-label">Electromigration Risk Score</div>
-      <div class="tm-val" style="color:${emRiskScore<32?'var(--emerald)':emRiskScore<60?'var(--amber)':'var(--rose)'}">${emRiskScore.toFixed(1)} / 100</div>
-    </div>
-  `;
-
-  document.getElementById('twin-aging').innerHTML=`
-    <div class="twin-metric">
-      <div class="tm-label">NBTI — ΔVth (PMOS)</div>
-      <div class="age-meter"><div class="age-fill" style="width:${Math.min((Number(twin.nbti_dvth_mv)||0)/100*100,100).toFixed(0)}%"></div></div>
-      <div style="font-family:var(--f-mono);font-size:14px;margin-top:6px">+${Number(twin.nbti_dvth_mv).toFixed(2)} mV</div>
-    </div>
-    <div class="twin-metric">
-      <div class="tm-label">HCI — ΔId/Id (NMOS)</div>
-      <div class="age-meter"><div class="age-fill" style="width:${Math.min((Number(twin.hci_did_percent)||0)*5,100).toFixed(0)}%"></div></div>
-      <div style="font-family:var(--f-mono);font-size:14px;margin-top:6px">-${Number(twin.hci_did_percent).toFixed(3)}%</div>
-    </div>
-    <div class="twin-metric">
-      <div class="tm-label">Electromigration Risk</div>
-      <div class="age-meter"><div class="age-fill" style="width:${emRiskScore.toFixed(0)}%"></div></div>
-      <div style="font-family:var(--f-mono);font-size:14px;margin-top:6px">${emRiskLabel} · ${emRiskScore.toFixed(1)} / 100</div>
-    </div>
-    <div class="twin-metric">
-      <div class="tm-label">Current Density Proxy</div>
-      <div style="font-family:var(--f-mono);font-size:14px;margin-top:6px">${emCurrentDensity.toFixed(3)} mA/um</div>
-    </div>
-    <div class="twin-metric">
-      <div class="tm-label">AVS Policy</div>
-      <div style="font-size:12px;color:var(--lum);margin-top:6px">
-        ${(twin.recommendations?.action||'Normal operation')} ${twin.recommendations?.vdd_boost?`(+${twin.recommendations.vdd_boost}mV)`:''} <span style="color:var(--t2)">(${source==='backend'?'live':'local'})</span>
-      </div>
-    </div>
-  `;
-
-  // Lifetime chart
-  if(S.charts.twin){S.charts.twin.destroy();delete S.charts.twin;}
-  const yrs=Array.from({length:26},(_, i)=>i);
-  const horizon=Math.max(years,1);
-  const freqOverTime=yrs.map(y=>{
-    const factor=Math.min(y/horizon,1);
-    const curve=Math.pow(factor,0.72);
-    const tail=Math.max(0, y-years) * 0.003;
-    return +(r0.freq - (r0.freq-freq_deg)*curve - tail).toFixed(4);
-  });
-  S.charts.twin = new Chart(document.getElementById('c-twin').getContext('2d'),{
-    type:'line',
-    data:{labels:yrs.map(y=>y+'yr'),datasets:[{
-      label:'Frequency',data:freqOverTime,borderColor:'#00f5ff',
-      backgroundColor:'rgba(0,245,255,0.07)',borderWidth:1.5,fill:true,tension:0.4,pointRadius:0
-    },{
-      label:'Health 90%',data:yrs.map(()=>r0.freq*0.9),
-      borderColor:'rgba(255,75,110,0.4)',borderDash:[4,4],borderWidth:1,pointRadius:0,fill:false
-    }]},
-    options:chartOptions({
-      plugins:{...chartOptions().plugins,legend:{display:true,labels:{color:cssVar('--t1'),font:{size:10}}}},
-      scales:{x:{title:{display:true,text:'Lifetime (years)'}},y:{title:{display:true,text:'Frequency (GHz)'}}}
-    })
-  });
-  renderTwinVisuals(twin, r0, emRiskScore, emRiskLabel, emCurrentDensity);
-  S.stale.twin=false;
-  persistWorkspace();
 }
 
 function renderTwinVisuals(twin, r0, emRiskScore=0, emRiskLabel='LOW', emCurrentDensity=0){
@@ -4571,24 +4506,15 @@ function aiQ(p){ document.getElementById('ai-in').value=p; aiSend(); }
 
 async function callAI(msg){
   aiAdd('user',escapeHtml(msg).replace(/\n/g,'<br>'));
-  const r0=S.results.slice(-1)[0];
-  const ctx=r0?`Current run: Corner=${r0.corner}, ${S.techNode}nm, WN=${S.wn}µm WP=${S.wp}µm VDD=${S.vdd}V Temp=${S.temp}°C CL=${S.cl}fF → Freq=${r0.freq}GHz Power=${r0.power}mW Delay=${r0.delay}ps`:`Design params: ${S.corner} ${S.techNode}nm WN=${S.wn}µm WP=${S.wp}µm VDD=${S.vdd}V`;
-
   const thinking=aiAdd('thinking','<span class="spin"></span>SILIQUESTA AI');
 
   try{
-    const data=await apiRequest('/ai/chat',{
-      method:'POST',
-      body:{
-        message:msg,
-        context:buildCurrentContext()
-      }
-    });
     thinking.remove();
-    aiAdd('ai',normalizeAIResponse(msg, data.response||'', true));
+    const data = await handleAI(msg);
+    aiAdd('ai',`<b>Backend AI update</b><br><br>Frequency: ${Number(data.freq).toFixed(3)} GHz<br>Power: ${Number(data.power).toFixed(3)} mW<br>Delay: ${Number(data.delay).toFixed(3)} ps`);
   }catch(e){
     thinking.remove();
-    aiAdd('ai',offlineAI(msg,ctx));
+    aiAdd('ai',offlineAI(msg,''));
   }
   persistWorkspace();
 }
@@ -5769,6 +5695,9 @@ function updateSaaS(){
 // ═══════════════════════════════════════════════════
 function generateInsight(r){
   r = r || computeCore();
+  if(r.power > 50) return "High power";
+  if(r.delay > 100) return "High delay";
+  if(r.freq || r.power || r.delay) return "Good performance";
   const mat = MATERIAL_DB[currentMaterial] || MATERIAL_DB.silicon;
   const mode = S.simMode || 'classical';
   const modeTag = mode==='quantum'?'[QM] ':mode==='ai'?'[AI] ':'';
@@ -5807,9 +5736,10 @@ function showInsightMsg(txt){
   clearTimeout(window._insightTimer);
   window._insightTimer = setTimeout(()=>toast.classList.remove('show'), 8000);
 }
-function showInsight(){
-  const r = S.results.length ? S.results[S.results.length-1] : computeCore();
-  showInsightMsg(generateInsight(r));
+function showInsight(r){
+  const current = r ? normalizeRunMetrics(r) : (S.results.length ? S.results[S.results.length-1] : computeCore());
+  lastResult = current;
+  showInsightMsg(generateInsight(current));
 }
 
 // ═══════════════════════════════════════════════════

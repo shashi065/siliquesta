@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>SILIQUESTA Twin</title>
+<meta name="theme-color" content="#020209">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#02040b;
+  --bg2:#091221;
+  --glass:rgba(9,18,33,.68);
+  --line:rgba(255,255,255,.09);
+  --line2:rgba(0,245,255,.14);
+  --text:#f0f4ff;
+  --muted:#8fa1c4;
+  --cyan:#00f5ff;
+  --blue:#0088ff;
+  --green:#00df7f;
+  --yellow:#ffbf2f;
+  --red:#ff5168;
+  --shadow:0 22px 54px rgba(0,0,0,.35);
+}
+html,body{height:100%;background:radial-gradient(circle at top left,rgba(0,136,255,.1),transparent 24%),radial-gradient(circle at 80% 18%,rgba(255,81,104,.08),transparent 20%),linear-gradient(180deg,#02040b,#08101d 48%,#03060f);font-family:'Outfit',sans-serif;color:var(--text);overflow:hidden}
+body[data-theme="light"]{
+  --bg:#eef5ff;
+  --bg2:#dfe9fb;
+  --glass:rgba(255,255,255,.72);
+  --line:rgba(9,25,58,.1);
+  --line2:rgba(0,136,255,.16);
+  --text:#10203d;
+  --muted:#576a8f;
+  --shadow:0 20px 44px rgba(25,48,92,.16);
+  background:radial-gradient(circle at top left,rgba(0,136,255,.08),transparent 24%),radial-gradient(circle at 80% 18%,rgba(255,81,104,.06),transparent 20%),linear-gradient(180deg,#f5f9ff,#e6efff 48%,#f8fbff);
+}
+#viewport{position:fixed;inset:0}
+.hud{position:fixed;z-index:12;backdrop-filter:blur(18px);border:1px solid var(--line);background:var(--glass);box-shadow:var(--shadow)}
+.topbar{top:16px;left:16px;right:16px;border-radius:18px;display:flex;align-items:center;gap:14px;padding:12px 16px}
+.logo{font-size:18px;font-weight:800;letter-spacing:-.5px;background:linear-gradient(90deg,var(--cyan),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;cursor:pointer}
+.title-wrap{display:flex;flex-direction:column;gap:2px}
+.title{font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+.subtitle{font-size:12px;color:var(--muted)}
+.spacer{flex:1}
+.chip{padding:7px 10px;border-radius:999px;border:1px solid var(--line);font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);font-family:'DM Mono',monospace;white-space:nowrap}
+.button-row{display:flex;gap:8px;flex-wrap:wrap}
+.hud-btn{padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);cursor:pointer;font-family:inherit;font-size:12px;transition:.2s ease}
+.hud-btn:hover{border-color:var(--line2);color:var(--cyan);transform:translateY(-1px)}
+.hud-btn.primary{background:linear-gradient(135deg,var(--cyan),var(--blue));color:#001018;border:none;font-weight:700}
+.legend{left:16px;bottom:16px;width:min(320px,calc(100vw - 32px));border-radius:18px;padding:16px}
+.legend h3,.detail h3,.status h3{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.legend-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px}
+.legend-item{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--text)}
+.swatch{width:14px;height:14px;border-radius:4px;box-shadow:0 0 14px rgba(0,0,0,.18)}
+.detail{top:94px;right:16px;width:min(340px,calc(100vw - 32px));border-radius:18px;padding:16px}
+.status{top:94px;left:16px;width:min(260px,calc(100vw - 32px));border-radius:18px;padding:16px}
+.detail-grid,.status-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.metric{padding:10px 12px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.03)}
+.metric-k{font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.metric-v{font-family:'DM Mono',monospace;font-size:14px;color:var(--text)}
+.wide{grid-column:1/-1}
+.foot{position:fixed;right:16px;bottom:16px;z-index:12;padding:10px 12px;border-radius:14px;border:1px solid var(--line);background:var(--glass);backdrop-filter:blur(18px);font-size:11px;color:var(--muted);font-family:'DM Mono',monospace}
+.hint{margin-top:12px;font-size:12px;color:var(--muted);line-height:1.7}
+.detail-body{display:flex;flex-direction:column;gap:10px}
+.detail-copy{font-size:13px;color:var(--muted);line-height:1.7}
+.bar{height:8px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden}
+.bar-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--blue),var(--green),var(--yellow),var(--red))}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(18px);z-index:14;padding:12px 16px;border-radius:14px;border:1px solid var(--line2);background:rgba(2,10,20,.9);color:var(--text);backdrop-filter:blur(16px);opacity:0;pointer-events:none;transition:.25s ease;font-size:12px}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+canvas{display:block}
+@media (max-width:920px){
+  .topbar{flex-wrap:wrap}
+  .spacer{display:none}
+  .status,.detail{position:fixed;top:auto;bottom:180px;width:min(320px,calc(100vw - 32px))}
+  .detail{right:16px}
+  .status{left:16px}
+}
+@media (max-width:640px){
+  .topbar{left:10px;right:10px;top:10px;padding:12px}
+  .detail,.status,.legend{left:10px;right:10px;width:auto}
+  .detail{bottom:204px}
+  .status{bottom:384px}
+  .legend{bottom:62px}
+  .button-row{width:100%}
+  .hud-btn{flex:1}
+  .foot{left:10px;right:10px;bottom:10px;text-align:center}
+}
+</style>
+</head>
+<body>
+<div id="viewport"></div>
+<div class="hud topbar">
+  <div class="logo" id="logo">SILIQUESTA</div>
+  <div class="title-wrap">
+    <div class="title">3D Chip Twin</div>
+    <div class="subtitle" id="scene-subtitle">AI-linked silicon floorplan twin</div>
+  </div>
+  <div class="chip" id="lod-chip">LOD BLOCKS</div>
+  <div class="chip" id="zoom-chip">ZOOM 0.0x</div>
+  <div class="chip" id="clock-chip">PATHS 0</div>
+  <div class="spacer"></div>
+  <div class="button-row">
+    <button class="hud-btn" id="fit-btn">Fit Chip</button>
+    <button class="hud-btn" id="audio-btn">Enable Audio</button>
+    <button class="hud-btn" id="landing-btn">Landing</button>
+    <button class="hud-btn primary" id="back-btn">Back To App</button>
+  </div>
+</div>
+<div class="hud status">
+  <h3>Viewer</h3>
+  <div class="status-grid">
+    <div class="metric">
+      <div class="metric-k">Power</div>
+      <div class="metric-v" id="power-metric">0.000 mW</div>
+    </div>
+    <div class="metric">
+      <div class="metric-k">Delay</div>
+      <div class="metric-v" id="delay-metric">0.000 ps</div>
+    </div>
+    <div class="metric">
+      <div class="metric-k">Frequency</div>
+      <div class="metric-v" id="freq-metric">0.000 GHz</div>
+    </div>
+    <div class="metric">
+      <div class="metric-k">Cells</div>
+      <div class="metric-v" id="cell-metric">0</div>
+    </div>
+    <div class="metric wide">
+      <div class="metric-k">Hotspot Envelope</div>
+      <div class="bar"><div class="bar-fill" id="hotspot-fill" style="width:0%"></div></div>
+    </div>
+  </div>
+  <div class="hint">OrbitControls: rotate with drag, pan with right drag, zoom with mouse wheel. Geometry detail switches automatically with camera distance.</div>
+</div>
+<div class="hud detail">
+  <h3>Selection</h3>
+  <div class="detail-body">
+    <div class="detail-copy" id="detail-copy">Hover over the layout to inspect a cell. Click a region to lock a full net and watch the timing path pulse through its route.</div>
+    <div class="detail-grid">
+      <div class="metric">
+        <div class="metric-k">Target</div>
+        <div class="metric-v" id="target-metric">None</div>
+      </div>
+      <div class="metric">
+        <div class="metric-k">Net</div>
+        <div class="metric-v" id="net-metric">Idle</div>
+      </div>
+      <div class="metric">
+        <div class="metric-k">Region Power</div>
+        <div class="metric-v" id="region-power">0.000</div>
+      </div>
+      <div class="metric">
+        <div class="metric-k">Region Delay</div>
+        <div class="metric-v" id="region-delay">0.000</div>
+      </div>
+      <div class="metric wide">
+        <div class="metric-k">Route</div>
+        <div class="metric-v" id="route-metric">Awaiting selection</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="hud legend">
+  <h3>Legend</h3>
+  <div class="legend-grid">
+    <div class="legend-item"><span class="swatch" style="background:#0088ff"></span>Low power</div>
+    <div class="legend-item"><span class="swatch" style="background:#00df7f"></span>Active</div>
+    <div class="legend-item"><span class="swatch" style="background:#ffbf2f"></span>Critical timing</div>
+    <div class="legend-item"><span class="swatch" style="background:#ff5168"></span>High power hotspot</div>
+  </div>
+</div>
+<div class="foot" id="foot-note">Live digital twin linked to workspace state</div>
+<div id="toast"></div>
+<script type="module">
+const themePref = (()=>{ try{ return localStorage.getItem('sq-theme') || 'dark'; }catch(e){ return 'dark'; }})();
+const themeResolved = themePref === 'system'
+  ? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+  : themePref;
+document.body.setAttribute('data-theme', themeResolved);
+
+const STORAGE_KEYS = { workspace:'sq_workspace', twinData:'sq_twin_data' };
+const resolveProductUrl = page => new URL(page, window.location.href).href;
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const mapRange = (value, inMin, inMax, outMin, outMax) => {
+  const t = inMax === inMin ? 0 : (value - inMin) / (inMax - inMin);
+  return outMin + clamp(t, 0, 1) * (outMax - outMin);
+};
+const showToast = text => {
+  const toast = document.getElementById('toast');
+  toast.textContent = text;
+  toast.classList.add('show');
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(()=>toast.classList.remove('show'), 1800);
+};
+const goToApp = () => { window.location.href = resolveProductUrl('app.html'); };
+const goToLanding = () => { window.location.href = resolveProductUrl('index.html'); };
+document.getElementById('back-btn').addEventListener('click', goToApp);
+document.getElementById('landing-btn').addEventListener('click', goToLanding);
+document.getElementById('logo').addEventListener('click', goToApp);
+
+function readWorkspace(){
+  try{
+    return JSON.parse(localStorage.getItem(STORAGE_KEYS.workspace) || '{}');
+  }catch(e){
+    return {};
+  }
+}
+
+function collectRouteCells(route, cols, rows, thickness = 1){
+  const visited = new Set();
+  for(let i=0;i<route.length-1;i++){
+    const a = route[i];
+    const b = route[i+1];
+    const steps = Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y), 1);
+    for(let step=0; step<=steps; step++){
+      const t = step / steps;
+      const x = Math.round(a.x + (b.x - a.x) * t);
+      const y = Math.round(a.y + (b.y - a.y) * t);
+      for(let oy=-thickness; oy<=thickness; oy++){
+        for(let ox=-thickness; ox<=thickness; ox++){
+          const cx = clamp(x + ox, 0, cols - 1);
+          const cy = clamp(y + oy, 0, rows - 1);
+          visited.add(cy * cols + cx);
+        }
+      }
+    }
+  }
+  return Array.from(visited);
+}
+
+function buildTwinDataFromWorkspace(workspace){
+  const cols = 84;
+  const rows = 84;
+  const latest = Array.isArray(workspace.results) && workspace.results.length
+    ? workspace.results[workspace.results.length - 1]
+    : {
+        freq:2.84,
+        power:0.92,
+        delay:14.6,
+        wn:workspace.wn ?? 0.5,
+        wp:workspace.wp ?? 1,
+        vdd:workspace.vdd ?? 1.2,
+        temp:workspace.temp ?? 27,
+        node:workspace.techNode ?? 28,
+        corner:workspace.corner ?? 'TT'
+      };
+  const frames = Array.isArray(workspace.results) && workspace.results.length
+    ? workspace.results.slice(-10).map((point, index)=>({
+        t:index,
+        freq:Number(point.freq),
+        power:Number(point.power),
+        delay:Number(point.delay)
+      }))
+    : Array.from({ length:10 }, (_, index)=>({
+        t:index,
+        freq:+(Number(latest.freq) * (1 - index * 0.012)).toFixed(4),
+        power:+(Number(latest.power) * (1 + index * 0.018)).toFixed(4),
+        delay:+(Number(latest.delay) * (1 + index * 0.028)).toFixed(4)
+      }));
+  const wnVal = Math.max(Number(workspace.wn ?? latest.wn ?? 0.5), 0.1);
+  const wpVal = Math.max(Number(workspace.wp ?? latest.wp ?? 1), 0.1);
+  const vddVal = Math.max(Number(workspace.vdd ?? latest.vdd ?? 1.2), 0.5);
+  const tempVal = Number(workspace.temp ?? latest.temp ?? 27);
+  const nodeVal = Math.max(Number(workspace.techNode ?? latest.node ?? 28), 0.3);
+  const freqVal = Math.max(Number(latest.freq ?? 2.8), 0.1);
+  const powerVal = Math.max(Number(latest.power ?? 0.92), 0.1);
+  const delayVal = Math.max(Number(latest.delay ?? 14.6), 0.1);
+  const hotspots = [
+    { x:0.18 + (wnVal * 0.07) % 0.24, y:0.24 + (wpVal * 0.05) % 0.18, amp:0.92 },
+    { x:0.5 + (vddVal * 0.06) % 0.18, y:0.38 + (freqVal * 0.03) % 0.16, amp:0.78 },
+    { x:0.78 - (tempVal * 0.0015) % 0.18, y:0.7 - (delayVal * 0.002) % 0.16, amp:0.9 }
+  ];
+  const powerMap = [];
+  for(let y=0;y<rows;y++){
+    const ny = y / Math.max(rows - 1, 1);
+    for(let x=0;x<cols;x++){
+      const nx = x / Math.max(cols - 1, 1);
+      let radial = 0;
+      hotspots.forEach(spot=>{
+        const dx = nx - spot.x;
+        const dy = ny - spot.y;
+        radial += spot.amp * Math.exp(-(dx * dx + dy * dy) / (0.008 + spot.amp * 0.02));
+      });
+      const waveA = 0.5 + 0.5 * Math.sin((nx * (6.5 + wnVal)) * Math.PI + nodeVal * 0.03);
+      const waveB = 0.5 + 0.5 * Math.cos((ny * (5.25 + wpVal)) * Math.PI - freqVal * 0.5);
+      const stripe = 0.5 + 0.5 * Math.sin(((nx + ny) * (4 + vddVal)) * Math.PI);
+      const activity = clamp(0.16 + waveA * 0.26 + waveB * 0.22 + stripe * 0.14 + radial * 0.42, 0, 1);
+      const power = Math.max(0.02, powerVal * (0.36 + activity * 0.92 + radial * 0.58));
+      const current = Math.max(0.01, (power / Math.max(vddVal, 0.5)) * (0.34 + activity * 0.72));
+      const delay = Math.max(0.02, delayVal * (0.54 + (1 - activity) * 0.52 + radial * 0.34));
+      powerMap.push({
+        id:y * cols + x,
+        x,
+        y,
+        block:`B${Math.floor(x / 12)}-${Math.floor(y / 12)}`,
+        power:+power.toFixed(4),
+        current:+current.toFixed(4),
+        delay:+delay.toFixed(4),
+        activity:+activity.toFixed(4)
+      });
+    }
+  }
+  const nets = Array.from({ length:24 }, (_, index)=>{
+    const startY = (index * 7 + Math.round(wnVal * 8)) % rows;
+    const endY = (index * 11 + Math.round(wpVal * 10) + 9) % rows;
+    const startX = (index * 5 + Math.round(vddVal * 12)) % Math.floor(cols * 0.28);
+    const endX = cols - 1 - ((index * 3 + Math.round(freqVal * 7)) % Math.floor(cols * 0.24));
+    const midX = Math.round(cols * (0.28 + ((index % 5) * 0.11)));
+    const elbowY = Math.round(rows * (0.2 + ((index % 6) * 0.11)));
+    const route = [
+      { x:startX, y:startY },
+      { x:midX, y:startY },
+      { x:midX, y:elbowY },
+      { x:endX, y:endY }
+    ];
+    return {
+      id:`NET_${String(index + 1).padStart(2,'0')}`,
+      name:index === 0 ? 'CLK_ROOT' : index === 1 ? 'RESET_TREE' : `NET_${String(index + 1).padStart(2,'0')}`,
+      route,
+      cellIds:collectRouteCells(route, cols, rows, 1 + (index % 2)),
+      power:+(powerVal * (0.74 + (index % 6) * 0.08)).toFixed(4),
+      current:+((powerVal / Math.max(vddVal, 0.5)) * (0.28 + (index % 5) * 0.06)).toFixed(4),
+      delay:+(delayVal * (0.78 + (index % 7) * 0.05)).toFixed(4),
+      severity:index % 7 === 0 ? 'hot' : index % 5 === 0 ? 'critical' : index % 3 === 0 ? 'active' : 'cool'
+    };
+  });
+  const paths = nets.slice(0, 10).map((net, index)=>{
+    const frame = frames[Math.min(index, frames.length - 1)] || frames[frames.length - 1];
+    return {
+      id:`PATH_${String(index + 1).padStart(2,'0')}`,
+      netId:net.id,
+      nodes:net.route.map((point, routeIndex)=>({ x:point.x, y:point.y, layer:(routeIndex % 3) + 1 })),
+      delay:+(Number(frame.delay) * (0.94 + index * 0.04)).toFixed(4),
+      power:+(Number(frame.power) * (0.86 + index * 0.05)).toFixed(4),
+      current:+(net.current * (0.92 + index * 0.03)).toFixed(4)
+    };
+  });
+  return {
+    powerMap,
+    nets,
+    paths,
+    meta:{
+      cols,
+      rows,
+      corner:workspace.corner ?? latest.corner ?? 'TT',
+      result:{
+        freq:+Number(latest.freq ?? freqVal).toFixed(4),
+        power:+Number(latest.power ?? powerVal).toFixed(4),
+        delay:+Number(latest.delay ?? delayVal).toFixed(4)
+      },
+      updatedAt:new Date().toISOString()
+    }
+  };
+}
+
+function loadTwinData(){
+  try{
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEYS.twinData) || 'null');
+    if(stored && Array.isArray(stored.powerMap) && Array.isArray(stored.nets) && Array.isArray(stored.paths)) return stored;
+  }catch(e){}
+  const fallback = buildTwinDataFromWorkspace(readWorkspace());
+  try{ localStorage.setItem(STORAGE_KEYS.twinData, JSON.stringify(fallback)); }catch(e){}
+  return fallback;
+}
+
+window.twinData = loadTwinData();
+
+let THREE;
+let OrbitControls;
+try{
+  THREE = await import('https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js');
+  ({ OrbitControls } = await import('https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/controls/OrbitControls.js'));
+}catch(error){
+  document.getElementById('detail-copy').textContent = 'Unable to load the 3D engine. Check network access and refresh the page.';
+  throw error;
+}
+
+const host = document.getElementById('viewport');
+const viewer = {
+  scene:new THREE.Scene(),
+  camera:new THREE.PerspectiveCamera(46, Math.max(window.innerWidth,1) / Math.max(window.innerHeight,1), 0.08, 4000),
+  renderer:new THREE.WebGLRenderer({ antialias:true, alpha:true, powerPreference:'high-performance' }),
+  raycaster:new THREE.Raycaster(),
+  pointer:new THREE.Vector2(2,2),
+  clock:new THREE.Clock(),
+  pickables:[],
+  overlays:{},
+  data:null,
+  meta:null,
+  cellMap:new Map(),
+  cellNetMap:new Map(),
+  blockData:[],
+  lod:'far',
+  hovered:null,
+  selectedNet:null,
+  selectedPath:null,
+  activeSignals:[],
+  lastFocusKey:'',
+  audio:{ enabled:false, context:null, nodes:[] }
+};
+
+viewer.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.4));
+viewer.renderer.setSize(window.innerWidth, window.innerHeight);
+viewer.renderer.outputColorSpace = THREE.SRGBColorSpace;
+viewer.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+viewer.renderer.toneMappingExposure = 1.16;
+host.appendChild(viewer.renderer.domElement);
+
+viewer.scene.background = new THREE.Color(themeResolved === 'light' ? 0xeef5ff : 0x02040b);
+viewer.scene.fog = new THREE.Fog(themeResolved === 'light' ? 0xeef5ff : 0x02040b, 240, 980);
+viewer.camera.position.set(0, 230, 280);
+
+viewer.controls = new OrbitControls(viewer.camera, viewer.renderer.domElement);
+viewer.controls.enableDamping = true;
+viewer.controls.enablePan = true;
+viewer.controls.enableZoom = true;
+viewer.controls.autoRotate = false;
+viewer.controls.minDistance = 40;
+viewer.controls.maxDistance = 920;
+viewer.controls.target.set(0, 0, 0);
+
+const ambient = new THREE.AmbientLight(0xffffff, themeResolved === 'light' ? 0.9 : 0.64);
+const hemi = new THREE.HemisphereLight(0x8fd5ff, 0x081523, themeResolved === 'light' ? 0.9 : 0.8);
+const dirA = new THREE.DirectionalLight(0xffffff, themeResolved === 'light' ? 1.2 : 1.6);
+dirA.position.set(120, 260, 160);
+const dirB = new THREE.DirectionalLight(0x00b7ff, themeResolved === 'light' ? 0.36 : 0.58);
+dirB.position.set(-180, 110, -90);
+viewer.scene.add(ambient, hemi, dirA, dirB);
+
+const dieGlowGeometry = new THREE.PlaneGeometry(300, 300);
+const dieGlowMaterial = new THREE.MeshBasicMaterial({
+  color:themeResolved === 'light' ? 0x7fd5ff : 0x00c2ff,
+  transparent:true,
+  opacity:themeResolved === 'light' ? 0.06 : 0.08,
+  depthWrite:false
+});
+const dieGlow = new THREE.Mesh(dieGlowGeometry, dieGlowMaterial);
+dieGlow.rotation.x = -Math.PI / 2;
+dieGlow.position.y = -0.2;
+viewer.scene.add(dieGlow);
+
+const gridHelper = new THREE.GridHelper(320, 48, themeResolved === 'light' ? 0x95b6f0 : 0x17447a, themeResolved === 'light' ? 0xb8cbef : 0x0c223d);
+gridHelper.material.transparent = true;
+gridHelper.material.opacity = themeResolved === 'light' ? 0.22 : 0.28;
+viewer.scene.add(gridHelper);
+
+const hoverMaterial = new THREE.MeshStandardMaterial({
+  color:0xffffff,
+  emissive:0x66f4ff,
+  emissiveIntensity:1.4,
+  transparent:true,
+  opacity:0.75,
+  metalness:0.32,
+  roughness:0.18,
+  depthWrite:false
+});
+viewer.overlays.hover = new THREE.Mesh(new THREE.BoxGeometry(1, 0.8, 1), hoverMaterial);
+viewer.overlays.hover.visible = false;
+viewer.scene.add(viewer.overlays.hover);
+
+const selectionMaterial = new THREE.MeshStandardMaterial({
+  color:0xffffff,
+  emissive:0x00f5ff,
+  emissiveIntensity:1.15,
+  transparent:true,
+  opacity:0.68,
+  metalness:0.38,
+  roughness:0.16,
+  depthWrite:false
+});
+viewer.overlays.selectionMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.88, 0.72, 0.88), selectionMaterial, 1600);
+viewer.overlays.selectionMesh.count = 0;
+viewer.overlays.selectionMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+viewer.scene.add(viewer.overlays.selectionMesh);
+viewer.overlays.selectionRoute = null;
+viewer.overlays.selectionCapacity = 1600;
+
+const transistorBaseGeometry = new THREE.BoxGeometry(0.22, 0.32, 0.14);
+
+function powerColor(entry){
+  const heat = clamp(mapRange(entry.power, viewer.meta.powerMin, viewer.meta.powerMax, 0, 1), 0, 1);
+  if(heat < 0.28) return new THREE.Color(0x0088ff).lerp(new THREE.Color(0x35b8ff), heat / 0.28);
+  if(heat < 0.55) return new THREE.Color(0x00a6ff).lerp(new THREE.Color(0x00df7f), (heat - 0.28) / 0.27);
+  if(heat < 0.8) return new THREE.Color(0x00df7f).lerp(new THREE.Color(0xffbf2f), (heat - 0.55) / 0.25);
+  return new THREE.Color(0xffbf2f).lerp(new THREE.Color(0xff5168), (heat - 0.8) / 0.2);
+}
+
+function layoutPoint(x, y, height = 0){
+  const pitch = viewer.meta.pitch;
+  return new THREE.Vector3(
+    (x - (viewer.meta.cols - 1) / 2) * pitch,
+    height,
+    (y - (viewer.meta.rows - 1) / 2) * pitch
+  );
+}
+
+function buildMeta(data){
+  const powerValues = data.powerMap.map(entry=>entry.power);
+  const delayValues = data.powerMap.map(entry=>entry.delay);
+  const currentValues = data.powerMap.map(entry=>entry.current);
+  const cols = Number(data.meta?.cols) || 84;
+  const rows = Number(data.meta?.rows) || 84;
+  return {
+    cols,
+    rows,
+    pitch:1.12,
+    powerMin:Math.min(...powerValues),
+    powerMax:Math.max(...powerValues),
+    delayMin:Math.min(...delayValues),
+    delayMax:Math.max(...delayValues),
+    currentMin:Math.min(...currentValues),
+    currentMax:Math.max(...currentValues),
+    result:data.meta?.result || { freq:0, power:0, delay:0 }
+  };
+}
+
+function buildCellNetMap(data){
+  const map = new Map();
+  data.nets.forEach(net=>{
+    net.cellIds.forEach(id=>{
+      if(!map.has(id)) map.set(id, []);
+      map.get(id).push(net.id);
+    });
+  });
+  viewer.cellNetMap = map;
+}
+
+function buildBlockData(data){
+  const blocks = new Map();
+  data.powerMap.forEach(cell=>{
+    const key = cell.block;
+    if(!blocks.has(key)){
+      blocks.set(key, { id:key, sumPower:0, sumDelay:0, sumCurrent:0, cells:[], minX:cell.x, maxX:cell.x, minY:cell.y, maxY:cell.y });
+    }
+    const block = blocks.get(key);
+    block.sumPower += cell.power;
+    block.sumDelay += cell.delay;
+    block.sumCurrent += cell.current;
+    block.cells.push(cell.id);
+    block.minX = Math.min(block.minX, cell.x);
+    block.maxX = Math.max(block.maxX, cell.x);
+    block.minY = Math.min(block.minY, cell.y);
+    block.maxY = Math.max(block.maxY, cell.y);
+  });
+  viewer.blockData = Array.from(blocks.values()).map(block=>({
+    ...block,
+    x:(block.minX + block.maxX) / 2,
+    y:(block.minY + block.maxY) / 2,
+    width:block.maxX - block.minX + 1,
+    height:block.maxY - block.minY + 1,
+    power:block.sumPower / block.cells.length,
+    delay:block.sumDelay / block.cells.length,
+    current:block.sumCurrent / block.cells.length
+  }));
+}
+
+function makeInstancedMesh(geometry, count, roughness = 0.28){
+  const material = new THREE.MeshStandardMaterial({
+    color:0xffffff,
+    metalness:0.35,
+    roughness,
+    emissive:0x041622,
+    emissiveIntensity:0.22
+  });
+  const mesh = new THREE.InstancedMesh(geometry, material, count);
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(count * 3), 3);
+  return mesh;
+}
+
+function buildMeshes(data){
+  if(viewer.worldGroup) viewer.scene.remove(viewer.worldGroup);
+  viewer.worldGroup = new THREE.Group();
+  viewer.pickables = [];
+  viewer.cellMap = new Map(data.powerMap.map(entry=>[entry.id, entry]));
+
+  const blockMesh = makeInstancedMesh(new THREE.BoxGeometry(1, 1, 1), viewer.blockData.length, 0.22);
+  viewer.blockData.forEach((block, index)=>{
+    const color = powerColor(block);
+    const pos = layoutPoint(block.x, block.y, 2.8);
+    const matrix = new THREE.Matrix4().compose(
+      pos,
+      new THREE.Quaternion(),
+      new THREE.Vector3(block.width * viewer.meta.pitch * 0.92, 4.8, block.height * viewer.meta.pitch * 0.92)
+    );
+    blockMesh.setMatrixAt(index, matrix);
+    blockMesh.setColorAt(index, color);
+  });
+  blockMesh.userData.kind = 'block';
+  blockMesh.userData.lookup = viewer.blockData;
+  blockMesh.instanceColor.needsUpdate = true;
+
+  const cellMesh = makeInstancedMesh(new THREE.BoxGeometry(0.86, 0.34, 0.86), data.powerMap.length, 0.3);
+  data.powerMap.forEach((entry, index)=>{
+    const pos = layoutPoint(entry.x, entry.y, 0.28 + entry.activity * 0.18);
+    const matrix = new THREE.Matrix4().compose(pos, new THREE.Quaternion(), new THREE.Vector3(1, 1 + entry.activity * 0.55, 1));
+    cellMesh.setMatrixAt(index, matrix);
+    cellMesh.setColorAt(index, powerColor(entry));
+  });
+  cellMesh.userData.kind = 'cell';
+  cellMesh.userData.lookup = data.powerMap;
+  cellMesh.instanceColor.needsUpdate = true;
+
+  const gateMesh = makeInstancedMesh(new THREE.BoxGeometry(0.22, 0.8, 0.68), data.powerMap.length, 0.18);
+  data.powerMap.forEach((entry, index)=>{
+    const pos = layoutPoint(entry.x, entry.y, 0.64 + entry.activity * 0.2);
+    const matrix = new THREE.Matrix4().compose(pos, new THREE.Quaternion(), new THREE.Vector3(1, 1, 1));
+    gateMesh.setMatrixAt(index, matrix);
+    gateMesh.setColorAt(index, powerColor(entry).clone().offsetHSL(0, 0.08, 0.05));
+  });
+  gateMesh.userData.kind = 'gate';
+  gateMesh.userData.lookup = data.powerMap;
+  gateMesh.instanceColor.needsUpdate = true;
+
+  const transistorMesh = makeInstancedMesh(transistorBaseGeometry, 3072, 0.12);
+  transistorMesh.userData.kind = 'transistor';
+  transistorMesh.userData.lookup = [];
+  transistorMesh.count = 0;
+  transistorMesh.visible = false;
+
+  const metalPositions = [];
+  const metalColors = [];
+  const viaPositions = [];
+  const viaColors = [];
+  data.nets.forEach((net, netIndex)=>{
+    const route = net.route;
+    for(let i=0;i<route.length-1;i++){
+      const a = layoutPoint(route[i].x, route[i].y, 1.2 + (i % 3) * 0.55);
+      const b = layoutPoint(route[i+1].x, route[i+1].y, 1.2 + (i % 3) * 0.55);
+      metalPositions.push(a.x, a.y, a.z, b.x, b.y, b.z);
+      const c = powerColor({ power:net.power, delay:net.delay, current:net.current, activity:0.6 });
+      metalColors.push(c.r, c.g, c.b, c.r, c.g, c.b);
+      if(i < route.length - 1){
+        const via = layoutPoint(route[i+1].x, route[i+1].y, 1.2 + (i % 3) * 0.55);
+        viaPositions.push(via.x, via.y, via.z);
+        viaColors.push(c.r, c.g, c.b);
+      }
+    }
+  });
+
+  const metalGeometry = new THREE.BufferGeometry();
+  metalGeometry.setAttribute('position', new THREE.Float32BufferAttribute(metalPositions, 3));
+  metalGeometry.setAttribute('color', new THREE.Float32BufferAttribute(metalColors, 3));
+  const metalMaterial = new THREE.LineBasicMaterial({ vertexColors:true, transparent:true, opacity:0.72 });
+  const metalLines = new THREE.LineSegments(metalGeometry, metalMaterial);
+
+  const viaGeometry = new THREE.BufferGeometry();
+  viaGeometry.setAttribute('position', new THREE.Float32BufferAttribute(viaPositions, 3));
+  viaGeometry.setAttribute('color', new THREE.Float32BufferAttribute(viaColors, 3));
+  const viaMaterial = new THREE.PointsMaterial({ size:2.4, vertexColors:true, transparent:true, opacity:0.92, sizeAttenuation:true });
+  const viaPoints = new THREE.Points(viaGeometry, viaMaterial);
+
+  viewer.worldGroup.add(blockMesh, cellMesh, gateMesh, transistorMesh, metalLines, viaPoints);
+  viewer.scene.add(viewer.worldGroup);
+
+  viewer.meshes = { blockMesh, cellMesh, gateMesh, transistorMesh, metalLines, viaPoints };
+  viewer.pickables = [blockMesh, cellMesh, gateMesh, transistorMesh];
+}
+
+function rebuildTransistors(){
+  const mesh = viewer.meshes.transistorMesh;
+  const maxCount = mesh.instanceMatrix.array.length / 16;
+  const focus = viewer.controls.target;
+  const targetGridX = Math.round(focus.x / viewer.meta.pitch + (viewer.meta.cols - 1) / 2);
+  const targetGridY = Math.round(focus.z / viewer.meta.pitch + (viewer.meta.rows - 1) / 2);
+  const candidates = viewer.data.powerMap
+    .filter(entry=>Math.abs(entry.x - targetGridX) <= 10 && Math.abs(entry.y - targetGridY) <= 10)
+    .sort((a, b)=>b.activity - a.activity)
+    .slice(0, 760);
+  let pointer = 0;
+  const color = new THREE.Color();
+  const matrix = new THREE.Matrix4();
+  const quaternion = new THREE.Quaternion();
+  candidates.forEach(entry=>{
+    if(pointer >= maxCount - 2) return;
+    const base = layoutPoint(entry.x, entry.y, 0.82);
+    const tint = powerColor(entry);
+    [
+      new THREE.Vector3(-0.18, 0, 0),
+      new THREE.Vector3(0.18, 0, 0)
+    ].forEach((offset, offsetIndex)=>{
+      if(pointer >= maxCount) return;
+      matrix.compose(base.clone().add(offset), quaternion, new THREE.Vector3(1, 1 + entry.activity * 0.2, 1));
+      mesh.setMatrixAt(pointer, matrix);
+      color.copy(tint).offsetHSL(offsetIndex ? 0.03 : -0.03, 0.04, 0.05);
+      mesh.setColorAt(pointer, color);
+      mesh.userData.lookup[pointer] = entry;
+      pointer++;
+    });
+  });
+  mesh.count = pointer;
+  mesh.instanceMatrix.needsUpdate = true;
+  if(mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+}
+
+function updateLOD(){
+  const distance = viewer.camera.position.distanceTo(viewer.controls.target);
+  let lod = 'far';
+  if(distance > 300) lod = 'far';
+  else if(distance > 150) lod = 'mid';
+  else if(distance > 82) lod = 'close';
+  else lod = 'ultra';
+  if(viewer.lod !== lod){
+    viewer.lod = lod;
+    document.getElementById('lod-chip').textContent = `LOD ${lod.toUpperCase()}`;
+    showToast(`${lod.toUpperCase()} detail engaged`);
+  }
+  viewer.meshes.blockMesh.visible = lod === 'far';
+  viewer.meshes.cellMesh.visible = lod === 'mid';
+  viewer.meshes.gateMesh.visible = lod === 'close' || lod === 'ultra';
+  viewer.meshes.transistorMesh.visible = lod === 'ultra';
+  viewer.meshes.metalLines.material.opacity = lod === 'far' ? 0.48 : lod === 'mid' ? 0.62 : 0.86;
+  viewer.meshes.viaPoints.material.opacity = lod === 'far' ? 0.3 : 0.9;
+  viewer.meshes.gateMesh.material.emissiveIntensity = lod === 'ultra' ? 0.52 : 0.28;
+  if(lod === 'ultra'){
+    const focusKey = `${Math.round(viewer.controls.target.x / viewer.meta.pitch)}:${Math.round(viewer.controls.target.z / viewer.meta.pitch)}`;
+    if(viewer.lastFocusKey !== focusKey){
+      viewer.lastFocusKey = focusKey;
+      rebuildTransistors();
+    }
+  }
+  document.getElementById('zoom-chip').textContent = `ZOOM ${(420 / distance).toFixed(1)}x`;
+}
+
+function updateMetrics(){
+  const result = viewer.data.meta?.result || viewer.meta.result;
+  document.getElementById('power-metric').textContent = `${Number(result.power || 0).toFixed(3)} mW`;
+  document.getElementById('delay-metric').textContent = `${Number(result.delay || 0).toFixed(3)} ps`;
+  document.getElementById('freq-metric').textContent = `${Number(result.freq || 0).toFixed(3)} GHz`;
+  document.getElementById('cell-metric').textContent = `${viewer.data.powerMap.length.toLocaleString()}`;
+  const hotspot = viewer.data.powerMap.reduce((max, entry)=>Math.max(max, entry.power), 0);
+  const hotspotPct = mapRange(hotspot, viewer.meta.powerMin, viewer.meta.powerMax, 18, 100);
+  document.getElementById('hotspot-fill').style.width = `${hotspotPct}%`;
+  document.getElementById('scene-subtitle').textContent = `${viewer.data.meta?.corner || 'TT'} corner · ${viewer.data.nets.length} routed nets · ${viewer.data.paths.length} timing paths`;
+  document.getElementById('clock-chip').textContent = `PATHS ${viewer.data.paths.length}`;
+  document.getElementById('foot-note').textContent = `Last sync ${new Date(viewer.data.meta?.updatedAt || Date.now()).toLocaleTimeString()} · ${viewer.data.meta?.corner || 'TT'} corner`;
+}
+
+function setHover(entry, sourceKind){
+  if(!entry){
+    viewer.hovered = null;
+    viewer.overlays.hover.visible = false;
+    if(!viewer.selectedNet) document.getElementById('detail-copy').textContent = 'Hover over the layout to inspect a cell. Click a region to lock a full net and watch the timing path pulse through its route.';
+    document.getElementById('target-metric').textContent = 'None';
+    document.getElementById('region-power').textContent = '0.000';
+    document.getElementById('region-delay').textContent = '0.000';
+    return;
+  }
+  viewer.hovered = entry;
+  const size = sourceKind === 'block'
+    ? Math.max(entry.width, entry.height) * viewer.meta.pitch * 0.96
+    : sourceKind === 'transistor' ? 0.34 : sourceKind === 'gate' ? 0.46 : 0.92;
+  const pos = layoutPoint(entry.x, entry.y, sourceKind === 'block' ? 2.6 : sourceKind === 'transistor' ? 0.84 : sourceKind === 'gate' ? 0.72 : 0.34);
+  viewer.overlays.hover.position.copy(pos);
+  viewer.overlays.hover.scale.set(size, sourceKind === 'block' ? 6 : 1.1, size);
+  viewer.overlays.hover.visible = true;
+  const linkedNets = viewer.cellNetMap.get(entry.id) || [];
+  document.getElementById('target-metric').textContent = sourceKind === 'block' ? entry.id : `CELL ${String(entry.id).padStart(4,'0')}`;
+  document.getElementById('region-power').textContent = Number(entry.power).toFixed(3);
+  document.getElementById('region-delay').textContent = Number(entry.delay).toFixed(3);
+  if(!viewer.selectedNet){
+    document.getElementById('net-metric').textContent = linkedNets[0] || 'LOCAL';
+    document.getElementById('detail-copy').textContent = `${sourceKind.toUpperCase()} ${sourceKind === 'block' ? entry.id : String(entry.id).padStart(4,'0')} is running at ${Number(entry.power).toFixed(3)} mW with ${Number(entry.delay).toFixed(3)} ps local delay.`;
+  }
+}
+
+function worldRoute(route){
+  return route.map((point, index)=>layoutPoint(point.x, point.y, 1.28 + (index % 3) * 0.55));
+}
+
+function clearSelectedNet(){
+  viewer.selectedNet = null;
+  viewer.selectedPath = null;
+  viewer.overlays.selectionMesh.count = 0;
+  viewer.overlays.selectionMesh.instanceMatrix.needsUpdate = true;
+  if(viewer.overlays.selectionRoute){
+    viewer.scene.remove(viewer.overlays.selectionRoute);
+    viewer.overlays.selectionRoute.geometry.dispose();
+    viewer.overlays.selectionRoute.material.dispose();
+    viewer.overlays.selectionRoute = null;
+  }
+  viewer.activeSignals.forEach(signal=>{
+    viewer.scene.remove(signal.mesh);
+    signal.mesh.geometry.dispose();
+    signal.mesh.material.dispose();
+  });
+  viewer.activeSignals = [];
+  document.getElementById('net-metric').textContent = 'Idle';
+  document.getElementById('route-metric').textContent = 'Awaiting selection';
+}
+
+function animateSignal(path){
+  if(!path || !Array.isArray(path.nodes) || path.nodes.length < 2) return;
+  const points = path.nodes.map(node=>layoutPoint(node.x, node.y, 1.4 + (node.layer || 1) * 0.38));
+  const curve = new THREE.CatmullRomCurve3(points, false, 'catmullrom', 0.18);
+  const geometry = new THREE.SphereGeometry(0.55, 16, 16);
+  const material = new THREE.MeshStandardMaterial({
+    color:0xffffff,
+    emissive:0x7fffff,
+    emissiveIntensity:1.5,
+    metalness:0.24,
+    roughness:0.08
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  viewer.scene.add(mesh);
+  const speed = clamp(1 / Math.max(Number(path.delay) || 1, 1), 0.015, 0.12);
+  viewer.activeSignals.push({ path, curve, mesh, progress:0, speed });
+}
+
+function selectNet(netId){
+  const net = viewer.data.nets.find(item=>item.id === netId);
+  if(!net) return;
+  clearSelectedNet();
+  viewer.selectedNet = net;
+  document.getElementById('net-metric').textContent = net.id;
+  document.getElementById('route-metric').textContent = `${net.route.length} nodes · ${net.cellIds.length} cells`;
+  document.getElementById('detail-copy').textContent = `${net.name} is highlighted. The full net is pulsing with emissive energy and its timing path speed is locked to ${Number(net.delay).toFixed(3)} ps delay.`;
+  const matrix = new THREE.Matrix4();
+  const quaternion = new THREE.Quaternion();
+  const color = new THREE.Color();
+  const selectedCells = net.cellIds.slice(0, viewer.overlays.selectionCapacity);
+  selectedCells.forEach((cellId, index)=>{
+    const entry = viewer.cellMap.get(cellId);
+    if(!entry || index >= viewer.overlays.selectionCapacity) return;
+    matrix.compose(layoutPoint(entry.x, entry.y, 0.44), quaternion, new THREE.Vector3(1.04, 1.16, 1.04));
+    viewer.overlays.selectionMesh.setMatrixAt(index, matrix);
+    color.copy(powerColor(entry)).offsetHSL(0, 0.08, 0.12);
+    viewer.overlays.selectionMesh.setColorAt(index, color);
+  });
+  viewer.overlays.selectionMesh.count = selectedCells.length;
+  viewer.overlays.selectionMesh.instanceMatrix.needsUpdate = true;
+  if(viewer.overlays.selectionMesh.instanceColor) viewer.overlays.selectionMesh.instanceColor.needsUpdate = true;
+
+  const routeCurve = new THREE.CatmullRomCurve3(worldRoute(net.route), false, 'catmullrom', 0.12);
+  const routeGeometry = new THREE.TubeGeometry(routeCurve, 120, 0.28, 8, false);
+  const routeMaterial = new THREE.MeshStandardMaterial({
+    color:0xffffff,
+    emissive:0x00f5ff,
+    emissiveIntensity:1.1,
+    transparent:true,
+    opacity:0.9,
+    metalness:0.3,
+    roughness:0.12
+  });
+  viewer.overlays.selectionRoute = new THREE.Mesh(routeGeometry, routeMaterial);
+  viewer.scene.add(viewer.overlays.selectionRoute);
+
+  viewer.data.paths.filter(path=>path.netId === net.id).forEach(path=>animateSignal(path));
+  if(!viewer.data.paths.some(path=>path.netId === net.id) && viewer.data.paths[0]) animateSignal({ ...viewer.data.paths[0], netId:net.id, nodes:net.route.map((point, index)=>({ x:point.x, y:point.y, layer:(index % 3) + 1 })), delay:net.delay });
+}
+
+function visibleRegions(){
+  const targetX = Math.round(viewer.controls.target.x / viewer.meta.pitch + (viewer.meta.cols - 1) / 2);
+  const targetY = Math.round(viewer.controls.target.z / viewer.meta.pitch + (viewer.meta.rows - 1) / 2);
+  const distance = viewer.camera.position.distanceTo(viewer.controls.target);
+  const radius = distance > 300 ? 36 : distance > 150 ? 24 : 12;
+  return viewer.blockData
+    .filter(block=>Math.abs(block.x - targetX) <= radius && Math.abs(block.y - targetY) <= radius)
+    .sort((a,b)=>b.power - a.power)
+    .slice(0, 6);
+}
+
+async function toggleAudio(){
+  if(viewer.audio.enabled){
+    viewer.audio.enabled = false;
+    viewer.audio.nodes.forEach(node=>node.gain.gain.setTargetAtTime(0, viewer.audio.context.currentTime, 0.08));
+    document.getElementById('audio-btn').textContent = 'Enable Audio';
+    showToast('Spatial audio muted');
+    return;
+  }
+  if(!viewer.audio.context){
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if(!AudioCtx){
+      showToast('Web Audio is not available in this browser');
+      return;
+    }
+    viewer.audio.context = new AudioCtx();
+    viewer.audio.nodes = Array.from({ length:6 }, (_, index)=>{
+      const osc = viewer.audio.context.createOscillator();
+      osc.type = index % 2 === 0 ? 'triangle' : 'sine';
+      const gain = viewer.audio.context.createGain();
+      gain.gain.value = 0;
+      const panner = viewer.audio.context.createStereoPanner();
+      osc.connect(gain).connect(panner).connect(viewer.audio.context.destination);
+      osc.start();
+      return { osc, gain, panner };
+    });
+  }
+  await viewer.audio.context.resume();
+  viewer.audio.enabled = true;
+  document.getElementById('audio-btn').textContent = 'Audio Active';
+  showToast('Spatial audio armed');
+}
+
+document.getElementById('audio-btn').addEventListener('click', toggleAudio);
+document.getElementById('fit-btn').addEventListener('click', ()=>{
+  viewer.camera.position.set(0, 230, 280);
+  viewer.controls.target.set(0, 0, 0);
+  viewer.controls.update();
+  showToast('Camera reset');
+});
+
+function updateSpatialAudio(){
+  if(!viewer.audio.enabled || !viewer.audio.context) return;
+  const regions = visibleRegions();
+  viewer.audio.nodes.forEach((node, index)=>{
+    const region = regions[index];
+    if(!region){
+      node.gain.gain.setTargetAtTime(0, viewer.audio.context.currentTime, 0.08);
+      return;
+    }
+    const powerNorm = mapRange(region.power, viewer.meta.powerMin, viewer.meta.powerMax, 0, 1);
+    const currentNorm = mapRange(region.current, viewer.meta.currentMin, viewer.meta.currentMax, 0, 1);
+    const pan = clamp(region.x / viewer.meta.cols * 2 - 1, -1, 1);
+    node.osc.frequency.setTargetAtTime(150 + powerNorm * 320, viewer.audio.context.currentTime, 0.08);
+    node.gain.gain.setTargetAtTime(currentNorm * 0.045, viewer.audio.context.currentTime, 0.12);
+    node.panner.pan.setTargetAtTime(pan, viewer.audio.context.currentTime, 0.12);
+  });
+}
+
+function buildWorld(data){
+  viewer.data = data;
+  viewer.meta = buildMeta(data);
+  buildCellNetMap(data);
+  buildBlockData(data);
+  buildMeshes(data);
+  updateMetrics();
+  clearSelectedNet();
+  data.paths.slice(0, 3).forEach(path=>animateSignal(path));
+  updateLOD();
+}
+
+function pointerEntry(intersection){
+  if(!intersection) return null;
+  const mesh = intersection.object;
+  const lookup = mesh.userData.lookup || [];
+  const instanceId = Number(intersection.instanceId ?? -1);
+  if(instanceId < 0 || !lookup[instanceId]) return null;
+  return { kind:mesh.userData.kind, entry:lookup[instanceId] };
+}
+
+viewer.renderer.domElement.addEventListener('pointermove', event=>{
+  const rect = viewer.renderer.domElement.getBoundingClientRect();
+  viewer.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  viewer.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+});
+
+viewer.renderer.domElement.addEventListener('pointerleave', ()=>{
+  viewer.pointer.set(2, 2);
+  if(!viewer.selectedNet) setHover(null);
+});
+
+viewer.renderer.domElement.addEventListener('click', ()=>{
+  viewer.raycaster.setFromCamera(viewer.pointer, viewer.camera);
+  const intersections = viewer.raycaster.intersectObjects(viewer.pickables.filter(mesh=>mesh.visible), false);
+  const hit = pointerEntry(intersections[0]);
+  if(!hit){
+    clearSelectedNet();
+    if(viewer.hovered) setHover(viewer.hovered, viewer.hovered.kind || 'cell');
+    return;
+  }
+  const entry = hit.entry;
+  if(hit.kind === 'block'){
+    const net = viewer.data.nets
+      .map(netItem=>({ net:netItem, matches:netItem.cellIds.filter(id=>entry.cells.includes(id)).length }))
+      .sort((a,b)=>b.matches - a.matches)[0];
+    if(net?.net) selectNet(net.net.id);
+    return;
+  }
+  const linked = viewer.cellNetMap.get(entry.id) || [];
+  if(linked.length) selectNet(linked[0]);
+});
+
+function syncRaycast(){
+  viewer.raycaster.setFromCamera(viewer.pointer, viewer.camera);
+  const intersections = viewer.raycaster.intersectObjects(viewer.pickables.filter(mesh=>mesh.visible), false);
+  const hit = pointerEntry(intersections[0]);
+  if(hit) setHover(hit.entry, hit.kind);
+  else if(!viewer.selectedNet) setHover(null);
+}
+
+function pulseHighlights(elapsed){
+  viewer.overlays.hover.material.emissiveIntensity = 1.1 + Math.sin(elapsed * 4.2) * 0.34;
+  viewer.overlays.selectionMesh.material.emissiveIntensity = 0.92 + Math.sin(elapsed * 3.6) * 0.26;
+  if(viewer.overlays.selectionRoute){
+    viewer.overlays.selectionRoute.material.emissiveIntensity = 0.88 + Math.sin(elapsed * 4.8) * 0.32;
+  }
+}
+
+function animateSignals(delta, elapsed){
+  viewer.activeSignals.forEach(signal=>{
+    signal.progress = (signal.progress + delta * signal.speed) % 1;
+    const point = signal.curve.getPointAt(signal.progress);
+    signal.mesh.position.copy(point);
+    signal.mesh.scale.setScalar(1 + Math.sin(elapsed * 10 + signal.progress * Math.PI * 2) * 0.18);
+    signal.mesh.material.emissiveIntensity = 1.1 + Math.sin(elapsed * 8 + signal.progress * 6) * 0.36;
+  });
+}
+
+function applyTwinData(nextData){
+  window.twinData = nextData;
+  try{ localStorage.setItem(STORAGE_KEYS.twinData, JSON.stringify(nextData)); }catch(e){}
+  buildWorld(nextData);
+}
+
+window.setTwinData = applyTwinData;
+window.animateSignal = animateSignal;
+
+function resize(){
+  viewer.camera.aspect = Math.max(window.innerWidth, 1) / Math.max(window.innerHeight, 1);
+  viewer.camera.updateProjectionMatrix();
+  viewer.renderer.setSize(window.innerWidth, window.innerHeight);
+  viewer.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.4));
+}
+
+window.addEventListener('resize', resize);
+window.addEventListener('storage', event=>{
+  if(event.key === STORAGE_KEYS.twinData && event.newValue){
+    try{
+      applyTwinData(JSON.parse(event.newValue));
+      showToast('Twin data refreshed');
+    }catch(e){}
+  }
+});
+
+buildWorld(window.twinData);
+
+function loop(){
+  const delta = viewer.clock.getDelta();
+  const elapsed = viewer.clock.elapsedTime;
+  viewer.controls.update();
+  updateLOD();
+  syncRaycast();
+  pulseHighlights(elapsed);
+  animateSignals(delta, elapsed);
+  updateSpatialAudio();
+  viewer.renderer.render(viewer.scene, viewer.camera);
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>

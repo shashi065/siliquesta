@@ -259,7 +259,7 @@ body,nav,.dc,.fc,.tl-card,.cta-box,.chip-block,.btn-p,.btn-g,.nav-btn,.how-num-w
       <button class="tpill-btn" id="tp-light" onclick="setTheme('light')">Light</button>
       <button class="tpill-btn on" id="tp-sys" onclick="setTheme('system')">Auto</button>
     </div>
-    <button class="nav-btn" onclick="location.href='main.html'">Launch App →</button>
+    <button class="nav-btn" onclick="goToApp()">Launch App →</button>
     <button class="ham" onclick="this.closest('nav').classList.toggle('open')">☰</button>
   </div>
 </nav>
@@ -272,7 +272,7 @@ body,nav,.dc,.fc,.tl-card,.cta-box,.chip-block,.btn-p,.btn-g,.nav-btn,.how-num-w
     <p class="hero-tagline">Design Chips. Optimize with AI. Ship Faster.</p>
     <p class="hero-sub">SILIQUESTA combines deterministic physics-backed simulation, autonomous multi-objective optimization, and cross-platform delivery — so engineering teams move from idea to validated design with confidence.</p>
     <div class="hero-btns">
-      <button class="btn-p" onclick="location.href='main.html'">Launch Web App →</button>
+      <button class="btn-p" onclick="goToApp()">Launch Web App →</button>
       <button class="btn-g" onclick="document.getElementById('downloads').scrollIntoView({behavior:'smooth'})">Download Apps ↓</button>
     </div>
     <p class="hero-note">⚠ Beta release — results may vary. Feedback welcome.</p>
@@ -566,13 +566,13 @@ body,nav,.dc,.fc,.tl-card,.cta-box,.chip-block,.btn-p,.btn-g,.nav-btn,.how-num-w
         </div>
         <span class="dc-name">Web App</span>
         <span class="dc-tag">Browser · No install</span>
-        <a href="main.html" style="width:100%">
+        <a href="app.html" style="width:100%">
           <button class="dc-btn">Open →</button>
         </a>
       </div>
 
     </div>
-    <p class="dl-web-note reveal" style="transition-delay:.16s">Prefer no install?<a href="main.html">Launch the web app directly →</a></p>
+    <p class="dl-web-note reveal" style="transition-delay:.16s">Prefer no install?<a href="app.html">Launch the web app directly →</a></p>
   </div>
 </section>
 
@@ -636,7 +636,7 @@ body,nav,.dc,.fc,.tl-card,.cta-box,.chip-block,.btn-p,.btn-g,.nav-btn,.how-num-w
       <h2 class="cta-h2">Start Designing<br>with Siliquesta.</h2>
       <p class="cta-p">Launch the web workspace instantly, or distribute platform builds to your internal testers as you prepare for public beta.</p>
       <div class="cta-btns">
-        <button class="btn-p" onclick="location.href='main.html'">Launch Web App →</button>
+        <button class="btn-p" onclick="goToApp()">Launch Web App →</button>
         <button class="btn-g" onclick="document.getElementById('downloads').scrollIntoView({behavior:'smooth'})">Download Apps</button>
       </div>
     </div>
@@ -651,7 +651,7 @@ body,nav,.dc,.fc,.tl-card,.cta-box,.chip-block,.btn-p,.btn-g,.nav-btn,.how-num-w
     <div class="foot-links">
       <a class="foot-link" href="https://github.com/shashi065/siliquesta" target="_blank" rel="noopener noreferrer">GitHub</a>
       <a class="foot-link" href="https://github.com/shashi065/siliquesta/releases" target="_blank" rel="noopener noreferrer">Releases</a>
-      <a class="foot-link" href="main.html">Web App</a>
+      <a class="foot-link" href="app.html">Web App</a>
     </div>
   </div>
 </footer>
@@ -669,6 +669,8 @@ body,nav,.dc,.fc,.tl-card,.cta-box,.chip-block,.btn-p,.btn-g,.nav-btn,.how-num-w
   const VALID=new Set(['dark','light','system']);
   const media=window.matchMedia('(prefers-color-scheme: dark)');
   const root=document.documentElement;
+  window.resolveProductUrl=(page)=>new URL(page,window.location.href).href;
+  window.goToApp=()=>{window.location.href=resolveProductUrl('app.html');};
   function resolve(p){return p==='system'?(media.matches?'dark':'light'):p;}
   function apply(p,persist){
     const pref=VALID.has(p)?p:'system';
@@ -812,7 +814,7 @@ function detectAndDownload(){
   const ua = navigator.userAgent.toLowerCase();
   let platform, ext;
   if(ua.includes('android')){ platform='android'; ext='apk'; }
-  else if(ua.includes('iphone')||ua.includes('ipad')){ window.location.href='app.html'; return; }
+  else if(ua.includes('iphone')||ua.includes('ipad')){ goToApp(); return; }
   else if(ua.includes('win')){ platform='windows'; ext='exe'; }
   else if(ua.includes('mac')){ platform='macos'; ext='dmg'; }
   else { platform='linux'; ext='AppImage'; }

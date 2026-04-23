@@ -305,7 +305,7 @@ body.theme-noanim *::after {
   font-size:17px; font-weight:800; letter-spacing:-0.5px;
   background:linear-gradient(90deg,var(--lum),var(--lum2));
   -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-  white-space:nowrap;
+  white-space:nowrap; cursor:pointer;
 }
 .topbar-ver {
   font-family:var(--f-mono); font-size:9px; color:var(--t2);
@@ -1539,7 +1539,7 @@ body[data-theme="light"] #mat-select option {
   <!-- TOPBAR -->
   <div id="topbar">
     <button id="hamburger" onclick="toggleSidebar()">☰</button>
-    <div class="topbar-logo">SILIQUESTA</div>
+    <div class="topbar-logo" onclick="goToLanding()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goToLanding();}" role="button" tabindex="0" aria-label="Go to landing page">SILIQUESTA</div>
     <div class="topbar-ver">v2.0</div>
     <div class="topbar-tagline">AI-Driven Silicon Design Platform</div>
     <div class="topbar-corner-display" id="param-display"></div>
@@ -1559,7 +1559,7 @@ body[data-theme="light"] #mat-select option {
       <button class="tpill-btn"    id="tp-light" onclick="setTheme('light')">Light</button>
       <button class="tpill-btn"    id="tp-sys"   onclick="setTheme('system')">Auto</button>
     </div>
-    <button class="tbtn" onclick="showPanel('landing')">✦ Explore</button>
+    <button class="tbtn" onclick="goToLanding()">✦ Explore</button>
     <button class="tbtn" onclick="showInsight()">💡 Insight</button>
     <button class="tbtn prime" onclick="showPanel('sim');runSim()">⚡ Launch</button>
     <div id="topbar-status" style="display:none"><div class="status-dot"></div><span id="st-txt">AI READY</span></div>
@@ -1581,8 +1581,8 @@ body[data-theme="light"] #mat-select option {
     <div class="nav-i" onclick="showPanel('memory')"><span class="ni-icon">💾</span>Design DNA</div>
     <div class="nav-sect">Platform</div>
     <div class="nav-i" onclick="showPanel('library')"><span class="ni-icon">📚</span>IP Library</div>
-    <div class="nav-i" onclick="showPanel('3d')"><span class="ni-icon">🌐</span>3D Visualizer</div>
-    <div class="nav-i" onclick="showPanel('landing')"><span class="ni-icon">🌐</span>Landing</div>
+    <div class="nav-i" onclick="openTwinPage()"><span class="ni-icon">🌐</span>3D Visualizer</div>
+    <div class="nav-i" onclick="goToLanding()"><span class="ni-icon">🌐</span>Landing</div>
     <div class="nav-i" onclick="showPanel('settings')"><span class="ni-icon">⚙</span>Settings</div>
 
     <div class="sidebar-user">
@@ -2586,7 +2586,8 @@ const STORAGE_KEYS = {
   apiBase:'sq_api_url',
   settings:'sq_settings',
   plan:'sq_plan',
-  workspace:'sq_workspace'
+  workspace:'sq_workspace',
+  twinData:'sq_twin_data'
 };
 const USE_BACKEND = false;
 const API = "http://localhost:8000";
@@ -2648,6 +2649,155 @@ function getApiBase(){
     return DEFAULT_API_BASE;
   }
   return normalized;
+}
+function resolveProductUrl(page){
+  return new URL(page, window.location.href).href;
+}
+function goToLanding(){
+  window.location.href = resolveProductUrl('index.html');
+}
+function collectTwinRouteCells(route, cols, rows, thickness=1){
+  const visited = new Set();
+  for(let i=0;i<route.length-1;i++){
+    const a=route[i];
+    const b=route[i+1];
+    const steps=Math.max(Math.abs(b.x-a.x), Math.abs(b.y-a.y), 1);
+    for(let step=0;step<=steps;step++){
+      const t=step/steps;
+      const x=Math.round(a.x + (b.x-a.x)*t);
+      const y=Math.round(a.y + (b.y-a.y)*t);
+      for(let oy=-thickness;oy<=thickness;oy++){
+        for(let ox=-thickness;ox<=thickness;ox++){
+          const cx=Math.max(0, Math.min(cols-1, x+ox));
+          const cy=Math.max(0, Math.min(rows-1, y+oy));
+          visited.add(cy*cols + cx);
+        }
+      }
+    }
+  }
+  return Array.from(visited);
+}
+function buildSharedTwinData(result, timeline){
+  const active = normalizeRunMetrics(result || lastResult || S.results.slice(-1)[0] || computeCore());
+  const frames = Array.isArray(timeline) && timeline.length
+    ? timeline.map(point=>({ ...point }))
+    : (Array.isArray(S.twinLastTimeline) && S.twinLastTimeline.length
+      ? S.twinLastTimeline.map(point=>({ ...point }))
+      : [{ t:0, freq:active.freq, power:active.power, delay:active.delay }]);
+  const cols=84;
+  const rows=84;
+  const wnVal=Math.max(Number(SQ.state?.wn ?? S.wn ?? 0.5),0.1);
+  const wpVal=Math.max(Number(SQ.state?.wp ?? S.wp ?? 1),0.1);
+  const vddVal=Math.max(Number(SQ.state?.vdd ?? S.vdd ?? 1.2),0.5);
+  const tempVal=Number(SQ.state?.temp ?? S.temp ?? 27);
+  const techVal=Math.max(Number(SQ.state?.node ?? S.techNode ?? 28),0.3);
+  const freqBase=Math.max(Number(active.freq)||1,0.1);
+  const powerBase=Math.max(Number(active.power)||1,0.1);
+  const delayBase=Math.max(Number(active.delay)||1,0.1);
+  const hotspots=[
+    { x:0.18 + (wnVal*0.07)%0.24, y:0.22 + (wpVal*0.05)%0.18, amp:0.92 },
+    { x:0.54 + (vddVal*0.06)%0.2, y:0.34 + (freqBase*0.03)%0.2, amp:0.76 },
+    { x:0.76 - (tempVal*0.0015)%0.18, y:0.68 - (delayBase*0.002)%0.18, amp:0.88 }
+  ];
+  const powerMap=[];
+  for(let y=0;y<rows;y++){
+    const ny=y/Math.max(rows-1,1);
+    for(let x=0;x<cols;x++){
+      const nx=x/Math.max(cols-1,1);
+      let radial=0;
+      hotspots.forEach(spot=>{
+        const dx=nx-spot.x;
+        const dy=ny-spot.y;
+        radial += spot.amp*Math.exp(-(dx*dx + dy*dy)/(0.008 + spot.amp*0.02));
+      });
+      const waveA=0.5 + 0.5*Math.sin((nx*(6.5 + wnVal))*Math.PI + techVal*0.03);
+      const waveB=0.5 + 0.5*Math.cos((ny*(5.25 + wpVal))*Math.PI - freqBase*0.5);
+      const stripe=0.5 + 0.5*Math.sin(((nx+ny)*(4 + vddVal))*Math.PI);
+      const activity=Math.max(0, Math.min(1, 0.16 + waveA*0.26 + waveB*0.22 + stripe*0.14 + radial*0.42));
+      const power=Math.max(0.02, powerBase*(0.36 + activity*0.92 + radial*0.58));
+      const current=Math.max(0.01, (power/Math.max(vddVal,0.5))*(0.34 + activity*0.72));
+      const delay=Math.max(0.02, delayBase*(0.54 + (1-activity)*0.52 + radial*0.34));
+      powerMap.push({
+        id:y*cols + x,
+        x,
+        y,
+        block:`B${Math.floor(x/12)}-${Math.floor(y/12)}`,
+        power:+power.toFixed(4),
+        current:+current.toFixed(4),
+        delay:+delay.toFixed(4),
+        activity:+activity.toFixed(4)
+      });
+    }
+  }
+  const nets=Array.from({ length:24 }, (_, index)=>{
+    const startY=(index*7 + Math.round(wnVal*8))%rows;
+    const endY=(index*11 + Math.round(wpVal*10) + 9)%rows;
+    const startX=(index*5 + Math.round(vddVal*12))%Math.floor(cols*0.28);
+    const endX=cols-1-((index*3 + Math.round(freqBase*7))%Math.floor(cols*0.24));
+    const midX=Math.round(cols*(0.28 + ((index%5)*0.11)));
+    const elbowY=Math.round(rows*(0.2 + ((index%6)*0.11)));
+    const route=[
+      { x:startX, y:startY },
+      { x:midX, y:startY },
+      { x:midX, y:elbowY },
+      { x:endX, y:endY }
+    ];
+    const cellIds=collectTwinRouteCells(route, cols, rows, 1 + (index%2));
+    return {
+      id:`NET_${String(index+1).padStart(2,'0')}`,
+      name:index===0?'CLK_ROOT':index===1?'RESET_TREE':`NET_${String(index+1).padStart(2,'0')}`,
+      route,
+      cellIds,
+      power:+(powerBase*(0.74 + (index%6)*0.08)).toFixed(4),
+      current:+((powerBase/Math.max(vddVal,0.5))*(0.28 + (index%5)*0.06)).toFixed(4),
+      delay:+(delayBase*(0.78 + (index%7)*0.05)).toFixed(4),
+      severity:index%7===0?'hot':index%5===0?'critical':index%3===0?'active':'cool'
+    };
+  });
+  const paths=nets.slice(0, Math.min(10, nets.length)).map((net, index)=>{
+    const frame=frames[Math.min(index, frames.length-1)] || frames[frames.length-1] || active;
+    return {
+      id:`PATH_${String(index+1).padStart(2,'0')}`,
+      netId:net.id,
+      nodes:net.route.map((point, routeIndex)=>({
+        x:point.x,
+        y:point.y,
+        layer:(routeIndex%3)+1
+      })),
+      delay:+(Number(frame.delay ?? active.delay) * (0.94 + index*0.04)).toFixed(4),
+      power:+(Number(frame.power ?? active.power) * (0.86 + index*0.05)).toFixed(4),
+      current:+(net.current * (0.92 + index*0.03)).toFixed(4)
+    };
+  });
+  return {
+    powerMap,
+    nets,
+    paths,
+    meta:{
+      cols,
+      rows,
+      wn:wnVal,
+      wp:wpVal,
+      vdd:vddVal,
+      temp:tempVal,
+      node:techVal,
+      corner:S.corner,
+      result:active,
+      updatedAt:new Date().toISOString()
+    }
+  };
+}
+function syncTwinData(result, timeline){
+  const data=buildSharedTwinData(result, timeline);
+  window.twinData=data;
+  try{
+    localStorage.setItem(STORAGE_KEYS.twinData, JSON.stringify(data));
+  }catch(e){}
+  return data;
+}
+function openTwinPage(target='_self'){
+  syncTwinData(lastResult || S.results.slice(-1)[0] || computeCore(), S.twinLastTimeline);
+  window.open(resolveProductUrl('twin.html'), target);
 }
 function getToken(){ return localStorage.getItem(STORAGE_KEYS.token) || ''; }
 function setToken(token){ token ? localStorage.setItem(STORAGE_KEYS.token, token) : localStorage.removeItem(STORAGE_KEYS.token); }
@@ -3180,6 +3330,7 @@ function updateUI(data){
   updateDashboardPreview(r);
   document.getElementById('rc').textContent = S.runCount;
   document.getElementById('st-txt').textContent = 'READY';
+  syncTwinData(r, S.twinLastTimeline);
   persistWorkspace();
   return r;
 }
@@ -3194,6 +3345,7 @@ function updateTwin(data){
   if(delayEl) delayEl.innerText = d.delay.toFixed(2);
   syncMultiScale(d);
   updateSidebarTwin(d);
+  syncTwinData(d, S.twinLastTimeline);
   setVisualizerContext('twin');
   render3DTwinFallback(d);
   renderLayout2D(d);
@@ -3307,6 +3459,7 @@ function renderTwinChart(timeline){
     health > 85 ? 'LOW' : health > 70 ? 'MODERATE' : health > 55 ? 'HIGH' : 'CRITICAL',
     +(Math.max(baseResult.id_n || 1, 1) / Math.max(S.wn, 0.1) / 1000).toFixed(3)
   );
+  syncTwinData(last, timeline);
   if(S.currentPanel === '3d' || S.visualizerContext === 'twin') render3D();
   S.stale.twin=false;
   persistWorkspace();
@@ -4866,11 +5019,7 @@ function close3DTab(){
 }
 
 function openTwinVisualizer(){
-  setVisualizerContext('twin');
-  S.lastPanelBefore3D = S.currentPanel && S.currentPanel !== '3d' ? S.currentPanel : (S.lastPanelBefore3D || 'twin');
-  showTab('tab-3d');
-  init3DTwin();
-  update3DTwin(lastResult || computeCore());
+  openTwinPage();
 }
 
 function renderTwinCanvas(host, canvas, data, opts={}){
@@ -6788,7 +6937,8 @@ function logout(){
 function showPanel(id){
     if(id==='ada') id='optimizer';
     if(id==='3d'){
-      S.lastPanelBefore3D = S.currentPanel && S.currentPanel !== '3d' ? S.currentPanel : (S.lastPanelBefore3D || 'dashboard');
+      openTwinPage();
+      return;
     }
     S.currentPanel=id;
     if(id!=='3d') showTab();
@@ -6881,6 +7031,7 @@ function initApp(){
     updatePaymentSummary();
   }
   onParam();
+  syncTwinData(lastResult || S.results.slice(-1)[0] || computeCore(), S.twinLastTimeline);
   if(S.results.length){
     updateResultsTable();
     updateDashRuns();

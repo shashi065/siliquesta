@@ -795,13 +795,13 @@ function buildInstallerReadme(platform, ext){
   lines.push('The full native binary will be published once the');
   lines.push('Electron/Capacitor build pipeline is complete.');
   lines.push('');
-  lines.push('Use the web app immediately at: main.html');
+  lines.push('Use the web app immediately at: app.html');
   lines.push('(No installation required — works offline as PWA)');
   lines.push('');
   lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   lines.push('GitHub  : https://github.com/shashi065/siliquesta');
   lines.push('Releases: https://github.com/shashi065/siliquesta/releases');
-  lines.push('Web App : main.html (no install needed)');
+  lines.push('Web App : app.html (no install needed)');
   lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   return lines.join('\n');
@@ -812,7 +812,7 @@ function detectAndDownload(){
   const ua = navigator.userAgent.toLowerCase();
   let platform, ext;
   if(ua.includes('android')){ platform='android'; ext='apk'; }
-  else if(ua.includes('iphone')||ua.includes('ipad')){ window.location.href='main.html'; return; }
+  else if(ua.includes('iphone')||ua.includes('ipad')){ window.location.href='app.html'; return; }
   else if(ua.includes('win')){ platform='windows'; ext='exe'; }
   else if(ua.includes('mac')){ platform='macos'; ext='dmg'; }
   else { platform='linux'; ext='AppImage'; }

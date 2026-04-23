@@ -1448,22 +1448,6 @@ body[data-theme="light"] #mat-select option {
 }
 
 /* ═══════════════════════════════════════
-   DEMO BANNER
-   ═══════════════════════════════════════ */
-#demo-bar{
-  position:fixed;top:var(--topbar);left:0;right:0;z-index:500;
-  padding:7px 20px;display:flex;align-items:center;gap:12px;
-  background:linear-gradient(90deg,rgba(0,245,255,.07),rgba(123,47,255,.07));
-  border-bottom:1px solid rgba(0,245,255,.18);
-  backdrop-filter:blur(12px);display:none;
-}
-.db-dot{width:5px;height:5px;border-radius:50%;background:var(--lum);
-  box-shadow:0 0 6px var(--lum);animation:heartbeat 1.2s ease infinite;flex-shrink:0;}
-.db-text{font-family:var(--f-mono);font-size:10px;color:var(--lum);letter-spacing:1px;flex:1;}
-.db-stop{padding:3px 10px;border-radius:4px;border:1px solid rgba(0,245,255,.25);
-  background:transparent;color:var(--lum);font-size:9px;cursor:pointer;}
-
-/* ═══════════════════════════════════════
    MODE SELECTOR
    ═══════════════════════════════════════ */
 .mode-row{display:flex;gap:5px;margin-bottom:12px;}
@@ -1577,7 +1561,6 @@ body[data-theme="light"] #mat-select option {
     </div>
     <button class="tbtn" onclick="showPanel('landing')">✦ Explore</button>
     <button class="tbtn" onclick="showInsight()">💡 Insight</button>
-    <button class="tbtn" onclick="runInvestorDemo()">🎬 Demo</button>
     <button class="tbtn prime" onclick="showPanel('sim');runSim()">⚡ Launch</button>
     <div id="topbar-status" style="display:none"><div class="status-dot"></div><span id="st-txt">AI READY</span></div>
   </div>
@@ -1789,7 +1772,7 @@ body[data-theme="light"] #mat-select option {
           <div class="gc gc-p sim-actions-card">
             <div class="sect-label" style="margin-bottom:12px">Actions</div>
             <button class="action-btn btn-run" id="run-btn" onclick="runSim()">⚡ Run Simulation</button>
-            <button class="action-btn btn-opt" onclick="showPanel('ada');runADA()">🎯 ADA Optimize</button>
+            <button class="action-btn btn-opt" onclick="showPanel('optimizer');runADA()">🎯 ADA Optimize</button>
             <button class="action-btn btn-ghost" onclick="showPanel('pvt');runPVT()">🌡 PVT Sweep</button>
             <button class="action-btn btn-ghost" onclick="showPanel('twin');runTwin()">🧬 Digital Twin</button>
           </div>
@@ -2544,13 +2527,6 @@ body[data-theme="light"] #mat-select option {
   <div class="it-mode" id="insight-mode"></div>
 </div>
 
-<!-- DEMO BAR -->
-<div id="demo-bar">
-  <div class="db-dot"></div>
-  <div class="db-text" id="demo-txt">INVESTOR DEMO MODE ACTIVE</div>
-  <button class="db-stop" onclick="stopDemo()">✕ Exit</button>
-</div>
-
 <div id="toast-wrap" aria-live="polite" aria-atomic="true"></div>
 
 <script>
@@ -2579,7 +2555,8 @@ const S = {
   selectedPlan:{name:'Free', price:0}, paymentMethod:'UPI', autoTimer:null,
   paymentStage:'idle', paymentRef:'', paymentConfirmed:false,
   currentPanel:'dashboard', labHistory:[], librarySelected:0,
-  simMode:'classical', xaiMode:'shap'
+  simMode:'classical', xaiMode:'shap', visualizerContext:'pareto',
+  twinLastTimeline:[]
 };
 
 const DEFAULT_SETTINGS = {
@@ -2605,6 +2582,7 @@ const STORAGE_KEYS = {
 const USE_BACKEND = false;
 const API = "http://localhost:8000";
 let lastResult = null;
+let previousResult = null;
 const DEFAULT_API_BASE = (window.SILIQUESTA_SHARED_CONFIG && window.SILIQUESTA_SHARED_CONFIG.API_BASE) || window.SILIQUESTA_API_BASE || 'http://127.0.0.1:8000/api/v1';
 
 // ── Material Database ──
@@ -2841,6 +2819,315 @@ function syncSQStateFromS(){
   SQ.state.node = S.techNode;
   SQ.state.corner = S.corner;
 }
+function clampSQState(){
+  SQ.state.wn = Math.max(0.1, Number(SQ.state.wn) || 0.1);
+  SQ.state.wp = Math.max(0.1, Number(SQ.state.wp) || 0.1);
+  SQ.state.vdd = Math.min(2, Math.max(0.5, Number(SQ.state.vdd) || 0.5));
+  SQ.state.temp = Number.isFinite(Number(SQ.state.temp)) ? Number(SQ.state.temp) : S.temp;
+  SQ.state.cl = Number.isFinite(Number(SQ.state.cl)) ? Number(SQ.state.cl) : S.cl;
+  SQ.state.node = Number.isFinite(Number(SQ.state.node)) ? Number(SQ.state.node) : S.techNode;
+  SQ.state.corner = SQ.state.corner || S.corner;
+}
+function syncSFromSQState(){
+  clampSQState();
+  S.wn = SQ.state.wn;
+  S.wp = SQ.state.wp;
+  S.vdd = SQ.state.vdd;
+  S.temp = SQ.state.temp;
+  S.cl = SQ.state.cl;
+  S.techNode = SQ.state.node;
+  S.corner = SQ.state.corner;
+}
+function syncControlsFromState(){
+  const map = {
+    wn:[S.wn, value=>value.toFixed(2)+' µm', 'wn-v'],
+    wp:[S.wp, value=>value.toFixed(2)+' µm', 'wp-v'],
+    vdd:[S.vdd, value=>value.toFixed(2)+' V', 'vdd-v'],
+    temp:[S.temp, value=>Math.round(value)+'°C', 'temp-v'],
+    cl:[S.cl, value=>Math.round(value)+' fF', 'cl-v']
+  };
+  Object.entries(map).forEach(([id,[value, formatter, labelId]])=>{
+    const el=document.getElementById(id);
+    if(el) el.value=value;
+    const label=document.getElementById(labelId);
+    if(label) label.textContent=formatter(value);
+  });
+  const tnIndex=S.techNodes.findIndex(node=>Number(node)===Number(S.techNode));
+  const tnEl=document.getElementById('tn');
+  if(tnEl && tnIndex>=0) tnEl.value=tnIndex;
+  const tnLabel=document.getElementById('tn-v');
+  if(tnLabel) tnLabel.textContent=formatTechNode(S.techNode).replace('nm',' nm');
+  document.querySelectorAll('.cbtn').forEach(b=>b.classList.toggle('on',b.textContent===S.corner));
+}
+function ensureReasonPanel(){
+  let el=document.getElementById('ai-reason');
+  if(el) return el;
+  const host=document.querySelector('.sim-ai-card') || document.querySelector('.studio-composer');
+  if(!host) return null;
+  el=document.createElement('div');
+  el.id='ai-reason';
+  el.style.cssText='white-space:pre-line;font-size:11px;line-height:1.7;color:var(--t1);padding:10px 12px;border-radius:10px;border:1px solid var(--g2);background:var(--g1);';
+  el.textContent='AI reasoning will appear here after an action is applied.';
+  host.appendChild(el);
+  return el;
+}
+function ensureRTLOutputPanel(){
+  let el=document.getElementById('rtl-output');
+  if(el) return el;
+  const host=document.querySelector('.sim-ai-card') || document.querySelector('.studio-composer');
+  if(!host) return null;
+  const wrap=document.createElement('div');
+  wrap.style.cssText='margin-top:10px;padding-top:10px;border-top:1px solid var(--g2);';
+  wrap.innerHTML='<div class="sect-label" style="margin-bottom:8px">RTL Output</div><pre id="rtl-output" style="white-space:pre-wrap;word-break:break-word;font-size:11px;line-height:1.6;color:var(--lum);padding:12px;border-radius:10px;border:1px solid var(--g2);background:var(--g1);font-family:var(--f-mono);max-height:260px;overflow:auto">// RTL will appear here after AI generation.</pre>';
+  host.appendChild(wrap);
+  return document.getElementById('rtl-output');
+}
+function ensureInsightPanel(){
+  let el=document.getElementById('insight-panel');
+  if(el) return el;
+  const host=document.querySelector('.sim-metrics-card');
+  if(!host) return null;
+  const wrap=document.createElement('div');
+  wrap.style.cssText='margin-top:12px;padding-top:12px;border-top:1px solid var(--g2);';
+  wrap.innerHTML='<div class="sect-label" style="margin-bottom:8px">Insight Panel</div><div id="insight-panel" style="white-space:pre-line;font-size:11px;line-height:1.7;color:var(--t1)"></div>';
+  host.appendChild(wrap);
+  return document.getElementById('insight-panel');
+}
+function ensureComparisonPanel(){
+  const ids=['bf','af','bp','ap','bd','ad'];
+  if(ids.every(id=>document.getElementById(id))) return document.getElementById('bf');
+  const host=document.querySelector('.sim-metrics-card');
+  if(!host) return null;
+  const wrap=document.createElement('div');
+  wrap.style.cssText='margin-top:12px;padding-top:12px;border-top:1px solid var(--g2);';
+  wrap.innerHTML=`
+    <div class="sect-label" style="margin-bottom:8px">Before vs After</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:10px;color:var(--t2)">
+      <div></div><div style="color:var(--t1)">Before</div><div style="color:var(--t1)">After</div>
+      <div>Freq</div><div id="bf" style="color:var(--lum)">—</div><div id="af" style="color:var(--lum)">—</div>
+      <div>Power</div><div id="bp" style="color:var(--amber)">—</div><div id="ap" style="color:var(--amber)">—</div>
+      <div>Delay</div><div id="bd" style="color:var(--rose)">—</div><div id="ad" style="color:var(--rose)">—</div>
+    </div>`;
+  host.appendChild(wrap);
+  return document.getElementById('bf');
+}
+function ensureConfidenceNode(){
+  return document.getElementById('confidence') || document.getElementById('es-conf');
+}
+function syncMultiScale(result){
+  const r=normalizeRunMetrics(result);
+  const bindings={
+    'ms-transistor':`WN ${S.wn.toFixed(2)} / WP ${S.wp.toFixed(2)}`,
+    'ms-gate':`${r.delay.toFixed(2)} ps`,
+    'ms-block':`${r.freq.toFixed(2)} GHz`,
+    'ms-chip':`${r.power.toFixed(2)} mW`
+  };
+  Object.entries(bindings).forEach(([id,value])=>{
+    const el=document.getElementById(id);
+    if(el) el.textContent=value;
+  });
+  const shell=document.getElementById('twin-circuit');
+  if(shell){
+    shell.dataset.transistor=`WN ${S.wn.toFixed(2)} / WP ${S.wp.toFixed(2)}`;
+    shell.dataset.gate=`${r.delay.toFixed(2)} ps`;
+    shell.dataset.block=`${r.freq.toFixed(2)} GHz`;
+    shell.dataset.chip=`${r.power.toFixed(2)} mW`;
+  }
+}
+function updateComparison(newData) {
+  const current=normalizeRunMetrics(newData);
+  ensureComparisonPanel();
+  if (!previousResult) {
+    previousResult = current;
+    return;
+  }
+  const pairs = {
+    bf: previousResult.freq,
+    af: current.freq,
+    bp: previousResult.power,
+    ap: current.power,
+    bd: previousResult.delay,
+    ad: current.delay
+  };
+  Object.entries(pairs).forEach(([id, value])=>{
+    const el=document.getElementById(id);
+    if(el) el.innerText=Number(value).toFixed(2);
+  });
+  previousResult = current;
+}
+function analyzeIntent(prompt) {
+  prompt = String(prompt || '').toLowerCase();
+  return {
+    reducePower: prompt.includes("power"),
+    increaseSpeed: prompt.includes("speed") || prompt.includes("frequency"),
+    reduceDelay: prompt.includes("delay"),
+    wantsRTL: /(rtl|verilog|vhdl|alu|fsm|pipeline|state machine)/.test(prompt),
+    wantsLowPower: /(low power|reduce power|power optimize|power reduction)/.test(prompt),
+    wantsHighPerformance: /(high performance|increase speed|increase frequency|performance)/.test(prompt)
+  };
+}
+function generateRTL(prompt) {
+  const text = String(prompt || '').toLowerCase();
+  const wantsVhdl = text.includes('vhdl');
+  if (text.includes("alu")) {
+    if (wantsVhdl) {
+      return [
+        "library ieee;",
+        "use ieee.std_logic_1164.all;",
+        "use ieee.numeric_std.all;",
+        "",
+        "entity alu is",
+        "  port(a,b : in std_logic_vector(7 downto 0);",
+        "       op  : in std_logic_vector(2 downto 0);",
+        "       y   : out std_logic_vector(7 downto 0));",
+        "end entity;",
+        "",
+        "architecture rtl of alu is",
+        "begin",
+        "  process(a,b,op) begin",
+        "    case op is",
+        "      when \"000\" => y <= std_logic_vector(unsigned(a) + unsigned(b));",
+        "      when \"001\" => y <= std_logic_vector(unsigned(a) - unsigned(b));",
+        "      when \"010\" => y <= a and b;",
+        "      when \"011\" => y <= a or b;",
+        "      when others => y <= (others => '0');",
+        "    end case;",
+        "  end process;",
+        "end architecture;"
+      ].join('\n');
+    }
+    return [
+      "module alu(",
+      "  input [7:0] a,b,",
+      "  input [2:0] op,",
+      "  output reg [7:0] y",
+      ");",
+      "always @(*) begin",
+      "  case(op)",
+      "    3'b000: y = a + b;",
+      "    3'b001: y = a - b;",
+      "    3'b010: y = a & b;",
+      "    3'b011: y = a | b;",
+      "    default: y = 0;",
+      "  endcase",
+      "end",
+      "endmodule"
+    ].join('\n');
+  }
+  if (text.includes("fsm") || text.includes("state machine")) {
+    if (wantsVhdl) {
+      return [
+        "library ieee;",
+        "use ieee.std_logic_1164.all;",
+        "",
+        "entity fsm is",
+        "  port(clk, reset, din : in std_logic;",
+        "       dout            : out std_logic);",
+        "end entity;",
+        "",
+        "architecture rtl of fsm is",
+        "  signal state : integer range 0 to 2 := 0;",
+        "begin",
+        "  process(clk, reset) begin",
+        "    if reset = '1' then",
+        "      state <= 0;",
+        "    elsif rising_edge(clk) then",
+        "      case state is",
+        "        when 0 => if din='1' then state <= 1; else state <= 0; end if;",
+        "        when 1 => if din='1' then state <= 2; else state <= 0; end if;",
+        "        when others => state <= 0;",
+        "      end case;",
+        "    end if;",
+        "  end process;",
+        "  dout <= '1' when state = 2 else '0';",
+        "end architecture;"
+      ].join('\n');
+    }
+    return [
+      "module fsm(",
+      "  input clk, reset,",
+      "  input in,",
+      "  output reg out",
+      ");",
+      "reg [1:0] state;",
+      "",
+      "always @(posedge clk or posedge reset) begin",
+      "  if (reset) state <= 0;",
+      "  else begin",
+      "    case(state)",
+      "      0: state <= in ? 1 : 0;",
+      "      1: state <= in ? 2 : 0;",
+      "      2: state <= 0;",
+      "    endcase",
+      "  end",
+      "end",
+      "",
+      "always @(*) out = (state == 2);",
+      "endmodule"
+    ].join('\n');
+  }
+  if (text.includes("pipeline")) {
+    if (wantsVhdl) {
+      return [
+        "library ieee;",
+        "use ieee.std_logic_1164.all;",
+        "",
+        "entity pipeline is",
+        "  port(clk : in std_logic;",
+        "       din : in std_logic_vector(7 downto 0);",
+        "       dout: out std_logic_vector(7 downto 0));",
+        "end entity;",
+        "",
+        "architecture rtl of pipeline is",
+        "  signal stage1, stage2 : std_logic_vector(7 downto 0);",
+        "begin",
+        "  process(clk) begin",
+        "    if rising_edge(clk) then",
+        "      stage1 <= din;",
+        "      stage2 <= stage1;",
+        "      dout <= stage2;",
+        "    end if;",
+        "  end process;",
+        "end architecture;"
+      ].join('\n');
+    }
+    return [
+      "module pipeline(",
+      "  input clk,",
+      "  input [7:0] in,",
+      "  output reg [7:0] out",
+      ");",
+      "reg [7:0] stage1, stage2;",
+      "",
+      "always @(posedge clk) begin",
+      "  stage1 <= in;",
+      "  stage2 <= stage1;",
+      "  out <= stage2;",
+      "end",
+      "endmodule"
+    ].join('\n');
+  }
+  return "// Unable to infer design. Try ALU, FSM, or pipeline.";
+}
+function generateAIExplanation(actions, result) {
+  return `
+AI Actions:
+${actions.length ? actions.join(", ") : "No topology change required"}
+
+Result:
+Frequency: ${result.freq.toFixed(2)} GHz
+Power: ${result.power.toFixed(2)} mW
+Delay: ${result.delay.toFixed(2)} ps
+
+Tradeoff:
+Improved performance while balancing power and delay.
+  `.trim();
+}
+function updateComparisonAndInsight(result){
+  updateComparison(result);
+  showInsight(result);
+  syncMultiScale(result);
+}
 function updateUI(data){
   const r = normalizeRunMetrics(data);
   lastResult = r;
@@ -2885,6 +3172,11 @@ function updateTwin(data){
   if(freqEl) freqEl.innerText = d.freq.toFixed(2);
   if(powerEl) powerEl.innerText = d.power.toFixed(2);
   if(delayEl) delayEl.innerText = d.delay.toFixed(2);
+  syncMultiScale(d);
+  setVisualizerContext('twin');
+  render3DTwinFallback(d);
+  renderLayout2D(d);
+  if(S.currentPanel === '3d' || S.visualizerContext === 'twin') render3D();
 }
 function saveDesign(result){
   let db = JSON.parse(localStorage.getItem("designs")||"[]");
@@ -2919,30 +3211,30 @@ function fallbackSim() {
   const data = computeCore();
   updateUI(data);
   updateTwin(data);
-  showInsight(data);
+  runTwinAdvanced();
+  updateComparisonAndInsight(data);
   saveDesign(data);
   markDerivedPanelsDirty();
   updateParamDisplay();
 }
 function fallbackADA() {
   syncSQStateFromS();
-  const original = { ...SQ.state };
-  const results = [];
-  for (let i = 0; i < 200; i++) {
-    SQ.state.wn = Math.random();
-    SQ.state.wp = Math.random() + 0.5;
-    SQ.state.vdd = 0.8 + Math.random() * 0.6;
-    results.push({
-      ...SQ.state,
-      ...computeCore(SQ.state.wn, SQ.state.wp, SQ.state.vdd, S.temp, S.cl, S.corner, S.techNode)
-    });
-  }
-  SQ.state = { ...SQ.state, ...original };
+  const results = gpuSimulate(240).map(sample=>({
+    wn: sample.wn,
+    wp: sample.wp,
+    vdd: sample.vdd,
+    freq: sample.freq,
+    power: sample.power,
+    delay: sample.delay,
+    fom: sample.fom
+  }));
   SQ.pareto = results;
   updateParetoChart(results);
 }
 function renderTwinChart(timeline){
   if(!Array.isArray(timeline) || !timeline.length) return;
+  S.twinLastTimeline = timeline.map(point=>({ ...point }));
+  const baseResult = normalizeRunMetrics(lastResult || S.results.slice(-1)[0] || cmos(S.wn,S.wp,S.vdd,S.temp,S.cl,S.corner,S.techNode));
   const last = timeline[timeline.length - 1];
   const health = Math.max(0, 100 - (timeline.length - 1) * 4);
   const hdEl = document.getElementById('d-hlth');
@@ -2981,41 +3273,81 @@ function renderTwinChart(timeline){
       scales:{x:{title:{display:true,text:'Time'}},y:{title:{display:true,text:'Metric value'}}}
     })
   });
+  renderTwinVisuals(
+    {
+      health_score: health,
+      timeline
+    },
+    baseResult,
+    Math.max(3, Math.min(99, 100 - health)),
+    health > 85 ? 'LOW' : health > 70 ? 'MODERATE' : health > 55 ? 'HIGH' : 'CRITICAL',
+    +(Math.max(baseResult.id_n || 1, 1) / Math.max(S.wn, 0.1) / 1000).toFixed(3)
+  );
+  if(S.currentPanel === '3d' || S.visualizerContext === 'twin') render3D();
   S.stale.twin=false;
   persistWorkspace();
 }
 function fallbackTwin() {
+  runTwinAdvanced();
+}
+function runTwinAdvanced() {
   syncSQStateFromS();
   const base = computeCore();
   const timeline = [];
   for (let t = 0; t < 10; t++) {
+    const noise = (Math.random() - 0.5) * 0.05;
     timeline.push({
       t,
-      freq: base.freq * (1 - t * 0.02),
-      power: base.power * (1 + t * 0.03),
-      delay: base.delay * (1 + t * 0.04)
+      time: t,
+      freq: base.freq * (1 - t * 0.02 + noise),
+      power: base.power * (1 + t * 0.03 + noise),
+      delay: base.delay * (1 + t * 0.04 + noise)
     });
   }
   renderTwinChart(timeline);
+  update3DTwin({
+    ...base,
+    wn: S.wn,
+    wp: S.wp,
+    ...timeline[timeline.length - 1]
+  });
+  return timeline;
 }
-async function handleAI(prompt) {
+function handleAI(prompt) {
   syncSQStateFromS();
-  if (USE_BACKEND) {
-    try {
-      const res = await fetch(`${API}/ai`, {
-        method:"POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({ prompt, state: SQ.state })
-      });
-      const data = await res.json();
-      updateUI(data);
-      return "AI updated design";
-    } catch (e) {
-      console.warn("Backend failed -> using local AI");
-      return fallbackAI(prompt);
-    }
+  const intent = analyzeIntent(prompt);
+  const actions = [];
+  const rtl = generateRTL(prompt);
+  if (intent.reducePower || intent.wantsLowPower) {
+    SQ.state.vdd -= 0.1;
+    actions.push("Reduced VDD");
   }
-  return fallbackAI(prompt);
+  if (intent.increaseSpeed || intent.wantsHighPerformance) {
+    SQ.state.wn += 0.2;
+    actions.push("Increased transistor width");
+  }
+  if (intent.reduceDelay) {
+    SQ.state.wp += 0.2;
+    actions.push("Adjusted PMOS for delay reduction");
+  }
+  clampSQState();
+  syncSFromSQState();
+  syncControlsFromState();
+  const result = computeCore();
+  return {
+    result,
+    rtl,
+    explanation: `
+AI Actions: ${actions.length ? actions.join(", ") : "No parameter shift required"}
+
+Generated RTL based on intent.
+Performance optimized using parameter tuning.
+
+${generateAIExplanation(actions, normalizeRunMetrics(result))}
+    `.trim(),
+    actions,
+    intent
+  };
 }
 function handleLocalAI(cmd){
   const text = String(cmd || '').toLowerCase();
@@ -3031,23 +3363,34 @@ function handleLocalAI(cmd){
   runSim();
 }
 function fallbackAI(prompt) {
-  const text = String(prompt || '').toLowerCase();
-  if (text.includes("reduce power")) {
-    SQ.state.vdd -= 0.1;
-  }
-  if (text.includes("increase speed")) {
-    SQ.state.wn += 0.2;
-  }
-  S.vdd = SQ.state.vdd;
-  S.wn = SQ.state.wn;
-  const wnEl = document.getElementById('wn');
-  const vddEl = document.getElementById('vdd');
-  if(wnEl) wnEl.value = S.wn;
-  if(vddEl) vddEl.value = S.vdd;
-  onParam();
-  const result = computeCore();
-  updateUI(result);
-  return "Local AI optimization applied";
+  const ai = handleAI(prompt);
+  updateUI(ai.result);
+  updateTwin(ai.result);
+  runTwinAdvanced();
+  updateComparisonAndInsight(ai.result);
+  saveDesign(ai.result);
+  const reasonEl = ensureReasonPanel();
+  if (reasonEl) reasonEl.innerText = ai.explanation;
+  const rtlEl = ensureRTLOutputPanel();
+  if (rtlEl) rtlEl.innerText = ai.rtl;
+  return ai;
+}
+function onAISubmit(forcedPrompt) {
+  const input = document.getElementById("ai-input") || document.getElementById("ai-in") || document.getElementById("lab-prompt");
+  const prompt = String(forcedPrompt !== undefined ? forcedPrompt : (input?.value || '')).trim();
+  if (!prompt) return null;
+  const ai = handleAI(prompt);
+  updateUI(ai.result);
+  updateTwin(ai.result);
+  runTwinAdvanced();
+  updateComparisonAndInsight(ai.result);
+  saveDesign(ai.result);
+  const el = ensureReasonPanel();
+  if (el) el.innerText = ai.explanation;
+  const rtlEl = ensureRTLOutputPanel();
+  if (rtlEl) rtlEl.innerText = ai.rtl;
+  if (forcedPrompt === undefined && input && input.id === 'ai-in') input.value = '';
+  return ai;
 }
 function buildCurrentContext(){
   const latest=S.results.slice(-1)[0];
@@ -3586,7 +3929,8 @@ async function runSim() {
         const data = await res.json();
         updateUI(data);
         updateTwin(data);
-        showInsight(data);
+        runTwinAdvanced();
+        updateComparisonAndInsight(data);
         saveDesign(data);
         markDerivedPanelsDirty();
         updateParamDisplay();
@@ -3975,6 +4319,7 @@ function sortADACandidates(candidates, obj) {
 }
 
 function renderADAResults(top, candidates, totalCount, source='backend') {
+  setVisualizerContext('pareto');
   const el=document.getElementById('ada-results');
   if(!top.length){
     el.innerHTML='<div class="gc gc-p" style="text-align:center;color:var(--t2);padding:30px">No ranked designs are available yet. Relax the power/frequency constraints or run a simulation first.</div>';
@@ -4002,17 +4347,21 @@ function renderADAResults(top, candidates, totalCount, source='backend') {
   }
 
   if(S.charts.opt){S.charts.opt.destroy();delete S.charts.opt;}
-  const pts=candidates.map(c=>({x:c.freq,y:c.power}));
+  const freqValues=candidates.map(c=>Number(c.freq));
+  const freqMin=Math.min(...freqValues);
+  const freqMax=Math.max(...freqValues);
+  const useDelayLandscape=(freqMax-freqMin) < Math.max(0.25, freqMax*0.015);
+  const pts=candidates.map(c=>useDelayLandscape?({x:c.delay,y:c.power}):({x:c.freq,y:c.power}));
   const topPts=top.map(c=>({x:c.freq,y:c.power}));
   S.charts.opt = new Chart(document.getElementById('c-opt').getContext('2d'),{
     type:'scatter',
     data:{datasets:[
       {label:'All valid',data:pts.slice(0,500),backgroundColor:'rgba(0,245,255,0.15)',pointRadius:2},
-      {label:'Optimal',data:topPts,backgroundColor:'rgba(255,179,0,0.9)',borderColor:'#ffb300',pointRadius:7,borderWidth:1}
+      {label:'Optimal',data:top.map(c=>useDelayLandscape?({x:c.delay,y:c.power}):({x:c.freq,y:c.power})),backgroundColor:'rgba(255,179,0,0.9)',borderColor:'#ffb300',pointRadius:7,borderWidth:1}
     ]},
     options:chartOptions({
       plugins:{...chartOptions().plugins,legend:{display:true,labels:{color:cssVar('--t1'),font:{size:10}}}},
-      scales:{x:{title:{display:true,text:'Frequency (GHz)'}},y:{title:{display:true,text:'Power (mW)'}}}
+      scales:{x:{title:{display:true,text:useDelayLandscape?'Delay (ps)':'Frequency (GHz)'}},y:{title:{display:true,text:'Power (mW)'}}}
     })
   });
   document.getElementById('ada-status').textContent=source==='relaxed'
@@ -4046,6 +4395,7 @@ function renderADAResults(top, candidates, totalCount, source='backend') {
     const minPEl = document.getElementById('min-pow-3d');
     if(minPEl) minPEl.textContent = bestPt.y.toFixed(3) + ' mW';
   }
+  renderPareto3D(S.pareto.map(p=>({power:p.y, delay:p.z, freq:p.x})));
 }
 
 async function runADA() {
@@ -4105,60 +4455,789 @@ async function runTwin() {
   }
 }
 
-function renderTwinVisuals(twin, r0, emRiskScore=0, emRiskLabel='LOW', emCurrentDensity=0){
-  const twinHealth=Math.max(0, Math.min(100, Number(twin.health_score)||60));
-  const el=document.getElementById('twin-chip-3d');
-  if(el && typeof Plotly!=='undefined'){
-    const health=twinHealth;
-    const topColor=health>90?'#00e676':health>75?'#ffb300':'#ff4b6e';
-    const bodyColor=document.body.getAttribute('data-theme')==='light' ? '#c9d8f6' : '#1b2438';
-    const width=Math.max(1.8,S.wn*1.4);
-    const height=Math.max(1.6,S.wp*0.9);
-    const zTop=0.45 + Math.min(S.vdd/4,0.7);
-    Plotly.react(el,[
-      {
-        type:'mesh3d',
-        x:[0,width,width,0,0,width,width,0],
-        y:[0,0,height,height,0,0,height,height],
-        z:[0,0,0,0,zTop,zTop,zTop,zTop],
-        i:[0,0,0,4,4,1,2,0,3,1,0,4],
-        j:[1,2,3,5,6,5,6,4,7,2,1,7],
-        k:[2,3,1,6,7,6,7,7,4,6,5,5],
-        color:bodyColor,
-        opacity:0.95,
-        hoverinfo:'skip',
-        flatshading:true
-      },
-      {
-        type:'scatter3d',
-        mode:'markers+text',
-        x:[width*0.3,width*0.7,width*0.5],
-        y:[height*0.32,height*0.62,height*0.52],
-        z:[zTop,zTop,zTop+0.05],
-        text:['Logic','AI','Twin'],
-        textposition:'top center',
-        hoverinfo:'skip',
-        marker:{size:[10,12,12],color:[cssVar('--lum2'),cssVar('--violet'),topColor],line:{color:'#fff',width:1}}
-      }
-    ],{
+function gpuSimulate(samples = 200) {
+  const results = [];
+  const base = { ...SQ.state };
+  for (let i = 0; i < samples; i++) {
+    const state = {
+      wn: Math.max(0.1, (base.wn || S.wn) * (0.72 + Math.random() * 0.7)),
+      wp: Math.max(0.1, (base.wp || S.wp) * (0.74 + Math.random() * 0.7)),
+      vdd: Math.min(2, Math.max(0.5, 0.8 + Math.random() * 0.6)),
+      temp: S.temp + (Math.random() * 24 - 12),
+      cl: Math.max(1, (base.cl || S.cl) * (0.7 + Math.random() * 0.8)),
+      corner: S.corner,
+      node: S.techNode
+    };
+    results.push({ ...state, ...normalizeRunMetrics(computeCore(state)) });
+  }
+  return results;
+}
+
+function updateMultiScale(data){
+  const r = normalizeRunMetrics(data || computeCore());
+  const wnVal = Number(data?.wn ?? SQ.state?.wn ?? S.wn);
+  const wpVal = Number(data?.wp ?? SQ.state?.wp ?? S.wp);
+  const values = {
+    't-val': `Wn/Wp: ${wnVal.toFixed(2)} / ${wpVal.toFixed(2)}`,
+    'g-val': `Delay: ${r.delay.toFixed(2)} ps`,
+    'b-val': `Freq: ${r.freq.toFixed(2)} GHz`,
+    'c-val': `Power: ${r.power.toFixed(2)} mW`
+  };
+  Object.entries(values).forEach(([id, value])=>{
+    const el = document.getElementById(id);
+    if(el) el.innerText = value;
+  });
+  const circuit = document.getElementById('twin-circuit');
+  if(circuit){
+    circuit.dataset.tVal = `Wn/Wp ${wnVal.toFixed(2)} / ${wpVal.toFixed(2)}`;
+    circuit.dataset.gVal = `Delay ${r.delay.toFixed(2)} ps`;
+    circuit.dataset.bVal = `Freq ${r.freq.toFixed(2)} GHz`;
+    circuit.dataset.cVal = `Power ${r.power.toFixed(2)} mW`;
+  }
+  return r;
+}
+
+let _threeLoading = false;
+function loadThree(cb){
+  if(window.THREE && (!window.OrbitControls || window.THREE.OrbitControls || window.OrbitControls)){
+    cb();
+    return;
+  }
+  if(_threeLoading){
+    setTimeout(()=>loadThree(cb), 120);
+    return;
+  }
+  _threeLoading = true;
+  const loadScript = (src, done, fail) => {
+    const s=document.createElement('script');
+    s.src=src;
+    s.onload=done;
+    s.onerror=fail;
+    document.head.appendChild(s);
+  };
+  loadScript(
+    'https://unpkg.com/three@0.160.0/build/three.min.js',
+    ()=>{
+      loadScript(
+        'https://unpkg.com/three@0.160.0/examples/js/controls/OrbitControls.js',
+        ()=>{ _threeLoading=false; cb(); },
+        ()=>{ _threeLoading=false; cb(); }
+      );
+    },
+    ()=>{ _threeLoading=false; cb(); }
+  );
+}
+
+function ensureTwinSurfaces(){
+  const host3d=document.getElementById('twin-chip-3d');
+  if(host3d && (!document.getElementById('chip-3d') || !document.getElementById('chip-3d-fallback'))){
+    host3d.style.position='relative';
+    host3d.innerHTML =
+      '<canvas id="chip-3d-fallback" style="position:absolute;inset:0;width:100%;height:100%;display:block"></canvas>' +
+      '<div id="chip-3d" style="position:absolute;inset:0;min-height:320px;pointer-events:auto"></div>' +
+      '<button type="button" id="chip-3d-open" class="exp-btn" style="position:absolute;right:12px;bottom:12px;z-index:4;background:rgba(7,7,15,.88)" onclick="openTwinVisualizer()">Open Full Twin</button>';
+  }
+  const circuit=document.getElementById('twin-circuit');
+  if(circuit && !document.getElementById('chip-layout-2d')){
+    const canvas=document.createElement('canvas');
+    canvas.id='chip-layout-2d';
+    canvas.style.cssText='width:100%;height:100%;display:block;';
+    circuit.appendChild(canvas);
+  }
+}
+
+function ensureVisualizerTwinSurfaces(){
+  const host=document.getElementById('plotly-3d');
+  if(!host) return null;
+  host.style.position='relative';
+  host.innerHTML =
+    '<canvas id="chip-3d-panel-fallback" style="position:absolute;inset:0;width:100%;height:100%;display:block"></canvas>' +
+    '<div id="chip-3d-panel" style="position:absolute;inset:0;pointer-events:auto"></div>' +
+    '<canvas id="chip-layout-panel-2d" style="position:absolute;inset:0;width:100%;height:100%;display:none"></canvas>';
+  return host;
+}
+
+function update3DPanelMeta(){
+  const panel=document.getElementById('panel-3d');
+  if(!panel) return;
+  const title=panel.querySelector('.pg-title');
+  const sub=panel.querySelector('.pg-sub');
+  const twinMode=S.visualizerContext === 'twin';
+  if(title) title.textContent = twinMode ? '3D Chip Twin Visualizer' : '3D Design Space';
+  if(sub) sub.textContent = twinMode
+    ? 'Digital Twin-linked chip floorplan · interactive twin view · same live simulation state'
+    : 'Interactive Pareto frontier · Power × Delay × Frequency · Real computed data';
+}
+
+function setVisualizerContext(mode){
+  S.visualizerContext = mode === 'twin' ? 'twin' : 'pareto';
+  update3DPanelMeta();
+}
+
+function openTwinVisualizer(){
+  setVisualizerContext('twin');
+  showPanel('3d');
+  render3D();
+}
+
+function renderTwinCanvas(host, canvas, data, opts={}){
+  if(!host || !canvas) return;
+  const full=!!opts.full;
+  const width=Math.max(host.clientWidth || (full ? 900 : 640), full ? 720 : 320);
+  const height=Math.max(host.clientHeight || (full ? 520 : 320), full ? 420 : 240);
+  canvas.width=width;
+  canvas.height=height;
+  canvas.style.display='block';
+  const ctx=canvas.getContext('2d');
+  if(!ctx) return;
+  const result=normalizeRunMetrics(data || computeCore());
+  const samples=gpuSimulate(full ? 20 : 12);
+  const cols=full ? 4 : 3;
+  const rows=full ? 2 : 2;
+  const padX=full ? 48 : 28;
+  const padY=full ? 72 : 58;
+  const legendW=full ? 156 : 112;
+  const footer=full ? 64 : 42;
+  const cellW=(width-padX*2-legendW)/cols;
+  const cellH=(height-padY-footer-26)/rows;
+  ctx.clearRect(0,0,width,height);
+  const bg=ctx.createLinearGradient(0,0,width,height);
+  bg.addColorStop(0,'rgba(9,14,30,0.98)');
+  bg.addColorStop(1,'rgba(19,32,54,0.92)');
+  ctx.fillStyle=bg;
+  ctx.fillRect(0,0,width,height);
+  ctx.fillStyle='rgba(255,255,255,0.94)';
+  ctx.font=`700 ${full ? 30 : 18}px Outfit`;
+  ctx.fillText('Interactive Floorplan Twin', padX, full ? 38 : 28);
+  ctx.font=`${full ? 15 : 12}px DM Mono`;
+  ctx.fillStyle='rgba(168,168,204,0.92)';
+  ctx.fillText('Power heat  ·  Delay tint  ·  Frequency height', padX, full ? 60 : 46);
+  ctx.strokeStyle='rgba(0,245,255,0.10)';
+  ctx.lineWidth=1;
+  for(let i=0;i<=cols;i++){
+    ctx.beginPath();
+    ctx.moveTo(padX+i*cellW, padY);
+    ctx.lineTo(padX+i*cellW, padY+rows*cellH+14);
+    ctx.stroke();
+  }
+  for(let j=0;j<=rows;j++){
+    ctx.beginPath();
+    ctx.moveTo(padX, padY+j*cellH);
+    ctx.lineTo(padX+cols*cellW, padY+j*cellH);
+    ctx.stroke();
+  }
+  const maxFreq=Math.max(...samples.map(s=>s.freq), result.freq, 0.001);
+  const maxPower=Math.max(...samples.map(s=>s.power), result.power, 0.001);
+  const maxDelay=Math.max(...samples.map(s=>s.delay), result.delay, 0.001);
+  samples.slice(0, cols*rows).forEach((sample, index)=>{
+    const c=index%cols;
+    const r=Math.floor(index/cols);
+    const x=padX + c*cellW + cellW*0.16;
+    const y=padY + r*cellH + cellH*0.78;
+    const freqRatio=Math.min(1, sample.freq/maxFreq);
+    const powerRatio=Math.min(1, sample.power/maxPower);
+    const delayRatio=Math.min(1, sample.delay/maxDelay);
+    const h=(full ? 78 : 54) + freqRatio*(full ? 120 : 72);
+    const w=cellW*(full ? 0.56 : 0.62);
+    const d=cellH*(full ? 0.14 : 0.18);
+    const top=ctx.createLinearGradient(x, y-h, x+w, y+d);
+    top.addColorStop(0, `rgba(${Math.round(80+powerRatio*175)}, ${Math.round(220-delayRatio*90)}, 255, 0.96)`);
+    top.addColorStop(1, `rgba(${Math.round(255*powerRatio)}, ${Math.round(110+110*(1-delayRatio))}, ${Math.round(210+30*freqRatio)}, 0.90)`);
+    ctx.fillStyle=top;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x+w, y);
+    ctx.lineTo(x+w+d, y-d);
+    ctx.lineTo(x+d, y-d);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle=`rgba(${Math.round(30+powerRatio*180)}, ${Math.round(120+freqRatio*90)}, ${Math.round(200-delayRatio*60)}, 0.88)`;
+    ctx.beginPath();
+    ctx.moveTo(x+w, y);
+    ctx.lineTo(x+w+d, y-d);
+    ctx.lineTo(x+w+d, y-h-d);
+    ctx.lineTo(x+w, y-h);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle=`rgba(${Math.round(70+powerRatio*180)}, ${Math.round(120+freqRatio*100)}, ${Math.round(180+40*(1-delayRatio))}, 0.95)`;
+    ctx.fillRect(x, y-h, w, h);
+    ctx.shadowColor=`rgba(255,90,70,${0.18+powerRatio*0.5})`;
+    ctx.shadowBlur=10 + powerRatio*18;
+    ctx.fillRect(x+2, y-h+2, w-4, Math.max(4, h*0.16));
+    ctx.shadowBlur=0;
+    ctx.fillStyle='rgba(240,240,255,0.92)';
+    ctx.font=`${full ? 18 : 12}px DM Mono`;
+    ctx.fillText(`BLOCK ${index+1}`, x+6, y-h-10);
+  });
+  ctx.strokeStyle='rgba(0,245,255,0.18)';
+  ctx.lineWidth=2;
+  ctx.strokeRect(padX-14, padY-18, cols*cellW+22, rows*cellH+30);
+  const legendX=width-legendW+24;
+  [['#00f5ff','Cool'],['#8b5cf6','Delay'],['#ff5a46','Hot']].forEach((item, idx)=>{
+    ctx.fillStyle=item[0];
+    ctx.fillRect(legendX, padY + 28 + idx*(full ? 42 : 28), full ? 28 : 18, full ? 28 : 18);
+    ctx.fillStyle='rgba(240,240,255,0.88)';
+    ctx.font=`${full ? 18 : 12}px DM Mono`;
+    ctx.fillText(item[1], legendX + (full ? 40 : 28), padY + 48 + idx*(full ? 42 : 28));
+  });
+  ctx.fillStyle='rgba(240,240,255,0.94)';
+  ctx.font=`${full ? 20 : 15}px DM Mono`;
+  const footerY=height-20;
+  const seg=Math.floor(width/3);
+  ctx.fillText(`Freq ${result.freq.toFixed(2)} GHz`, padX, footerY);
+  ctx.fillText(`Power ${result.power.toFixed(2)} mW`, padX + seg, footerY);
+  ctx.fillText(`Delay ${result.delay.toFixed(3)} ps`, padX + seg*2 - 12, footerY);
+}
+
+function render3DTwinFallback(data){
+  ensureTwinSurfaces();
+  const canvas=document.getElementById('chip-3d-fallback');
+  if(!canvas) return;
+  const host=document.getElementById('twin-chip-3d') || canvas.parentElement;
+  renderTwinCanvas(host, canvas, data, { full:false });
+}
+
+function renderTwinVisualizerPanel(data){
+  const host=ensureVisualizerTwinSurfaces();
+  if(!host) return;
+  const threeHost=document.getElementById('chip-3d-panel');
+  const fallback=document.getElementById('chip-3d-panel-fallback');
+  const layoutCanvas=document.getElementById('chip-layout-panel-2d');
+  if(!fallback || !layoutCanvas) return;
+  if(viz3DMode === '2d'){
+    if(threeHost) threeHost.style.display='none';
+    fallback.style.display='none';
+    layoutCanvas.style.display='block';
+    renderLayout2D(data, layoutCanvas);
+    return;
+  }
+  if(viz3DMode === 'surface' && typeof Plotly !== 'undefined' && Array.isArray(S.twinLastTimeline) && S.twinLastTimeline.length){
+    if(threeHost) threeHost.style.display='none';
+    fallback.style.display='none';
+    layoutCanvas.style.display='none';
+    Plotly.react(host,[{
+      x:S.twinLastTimeline.map(point=>point.t ?? point.time),
+      y:S.twinLastTimeline.map(point=>Number(point.freq)),
+      z:S.twinLastTimeline.map(point=>Number(point.power)),
+      type:'scatter3d',
+      mode:'lines+markers',
+      marker:{size:4,color:S.twinLastTimeline.map(point=>Number(point.delay)),colorscale:'Turbo'},
+      line:{width:6,color:'#00f5ff'},
+      hovertemplate:'Year %{x}<br>Freq %{y:.2f} GHz<br>Power %{z:.2f} mW<extra></extra>'
+    }],{
+      margin:{l:0,r:0,t:12,b:0},
       paper_bgcolor:'rgba(0,0,0,0)',
       plot_bgcolor:'rgba(0,0,0,0)',
-      margin:{l:0,r:0,b:0,t:0},
-      hovermode:false,
       scene:{
-        bgcolor:'rgba(0,0,0,0)',
-        camera:{eye:{x:1.6,y:1.4,z:1.1}},
-        xaxis:{visible:false},
-        yaxis:{visible:false},
-        zaxis:{visible:false},
-        annotations:[{
-          x:width/2,y:height/2,z:zTop+0.14,
-          text:`Health ${health.toFixed(1)}%`,
-          showarrow:false,font:{size:14,color:cssVar('--t0')}
-        }]
-      }
-    },{displayModeBar:false,responsive:true});
+        xaxis:{title:'Stress Year',color:cssVar('--t1') || '#a8a8cc'},
+        yaxis:{title:'Frequency (GHz)',color:cssVar('--t1') || '#a8a8cc'},
+        zaxis:{title:'Power (mW)',color:cssVar('--t1') || '#a8a8cc'},
+        bgcolor:'rgba(0,0,0,0)'
+      },
+      font:{color:cssVar('--t1') || '#a8a8cc',family:'DM Mono'}
+    },{responsive:true,displayModeBar:false});
+    return;
   }
+  if(typeof Plotly !== 'undefined'){
+    try { Plotly.purge(host); } catch(e) {}
+  }
+  layoutCanvas.style.display='none';
+  fallback.style.display='block';
+  if(threeHost) threeHost.style.display='none';
+  renderTwinCanvas(host, fallback, data, { full:true });
+}
+
+function createFloorplan(scene){
+  const THREE = window.THREE;
+  const blocks = [];
+  for (let x=0; x<10; x++) {
+    for (let y=0; y<10; y++) {
+      const block = new THREE.Mesh(
+        new THREE.BoxGeometry(0.76, 0.22, 0.76),
+        new THREE.MeshStandardMaterial({
+          color: 0x1e90ff,
+          emissive: 0x081018,
+          emissiveIntensity: 0.18,
+          roughness: 0.28,
+          metalness: 0.56
+        })
+      );
+      block.position.set(x-4.5, 0.11, y-4.5);
+      block.userData.baseY = 0.11;
+      block.userData.kind = 'block';
+      scene.add(block);
+      blocks.push(block);
+    }
+  }
+  return blocks;
+}
+
+function drawRouting(scene){
+  const THREE = window.THREE;
+  const routes = [];
+  const material = new THREE.LineBasicMaterial({ color: 0x00ffff, transparent:true, opacity:0.42 });
+  for (let i=0;i<20;i++) {
+    const points = [
+      new THREE.Vector3(-5.1,0.23,i-9.5),
+      new THREE.Vector3(5.1,0.23,i-9.5)
+    ];
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const line = new THREE.Line(geometry, material.clone());
+    line.userData.kind = 'route';
+    scene.add(line);
+    routes.push(line);
+  }
+  for (let i=0;i<20;i++) {
+    const points = [
+      new THREE.Vector3(i-9.5,0.24,-5.1),
+      new THREE.Vector3(i-9.5,0.24,5.1)
+    ];
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const line = new THREE.Line(geometry, material.clone());
+    line.userData.kind = 'route';
+    scene.add(line);
+    routes.push(line);
+  }
+  return routes;
+}
+
+function buildTransistorDetail(scene){
+  const THREE = window.THREE;
+  const group = new THREE.Group();
+  group.visible = false;
+  for(let i=0;i<18;i++){
+    const gx = (i%6)*0.72 - 1.9;
+    const gz = Math.floor(i/6)*0.92 - 1.4;
+    const pmos = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18,0.12,0.42),
+      new THREE.MeshStandardMaterial({color:0xf472b6, emissive:0x220818, emissiveIntensity:0.25})
+    );
+    const nmos = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18,0.12,0.42),
+      new THREE.MeshStandardMaterial({color:0x38bdf8, emissive:0x081a28, emissiveIntensity:0.22})
+    );
+    pmos.position.set(gx,0.12,gz);
+    nmos.position.set(gx+0.28,0.12,gz);
+    pmos.userData.kind = 'transistor';
+    nmos.userData.kind = 'transistor';
+    group.add(pmos,nmos);
+  }
+  scene.add(group);
+  return group;
+}
+
+function showTransistorLevel() {
+  if(!S.threeTwin?.detailGroup) return;
+  S.threeTwin.detailGroup.visible = true;
+  (S.threeTwin.blocks||[]).forEach(block=>block.visible = false);
+}
+
+function showGateLevel() {
+  if(!S.threeTwin?.detailGroup) return;
+  S.threeTwin.detailGroup.visible = false;
+  (S.threeTwin.blocks||[]).forEach((block, idx)=>block.visible = idx % 2 === 0);
+}
+
+function showBlockLevel() {
+  if(!S.threeTwin?.detailGroup) return;
+  S.threeTwin.detailGroup.visible = false;
+  (S.threeTwin.blocks||[]).forEach(block=>block.visible = true);
+}
+
+function updateLOD(cameraZoom) {
+  if (cameraZoom < 5) {
+    showTransistorLevel();
+  } else if (cameraZoom < 10) {
+    showGateLevel();
+  } else {
+    showBlockLevel();
+  }
+}
+
+function updateFloorplan(data) {
+  if(!S.threeTwin?.blocks?.length) return;
+  const result = normalizeRunMetrics(data || computeCore());
+  const blocks = S.threeTwin.blocks;
+  const samples = gpuSimulate(blocks.length);
+  const maxPower = Math.max(...samples.map(s=>s.power), result.power, 0.001);
+  const maxFreq = Math.max(...samples.map(s=>s.freq), result.freq, 0.001);
+  blocks.forEach((b, i) => {
+    const sample = samples[i];
+    const intensity = Math.min(sample.power / maxPower, 1);
+    const freqRatio = Math.min(sample.freq / maxFreq, 1);
+    b.material.color.setRGB(intensity, 0.2 + freqRatio * 0.35, 1 - intensity * 0.7);
+    b.material.emissive.setRGB(intensity * 0.8, 0.08, 0.35 * (1-intensity));
+    b.material.emissiveIntensity = 0.2 + intensity * 0.7;
+    b.scale.y = 1 + freqRatio * 5.6;
+    b.position.y = (b.userData.baseY || 0.11) + (b.scale.y - 1) * 0.1;
+  });
+}
+
+function onChipClick(event) {
+  if(!S.threeTwin?.raycaster || !S.threeTwin?.renderer || !S.threeTwin?.camera) return;
+  const rect = S.threeTwin.renderer.domElement.getBoundingClientRect();
+  S.threeTwin.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  S.threeTwin.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  S.threeTwin.raycaster.setFromCamera(S.threeTwin.pointer, S.threeTwin.camera);
+  const targets = [...(S.threeTwin.blocks || []), ...(S.threeTwin.detailGroup?.children || [])];
+  const intersects = S.threeTwin.raycaster.intersectObjects(targets, false);
+  if (intersects.length > 0) {
+    const obj = intersects[0].object;
+    if(obj.material?.emissive){
+      obj.material.emissive.set(0x00ffff);
+      obj.material.emissiveIntensity = 0.95;
+    }
+  }
+}
+
+function runDRC() {
+  (S.threeTwin?.blocks || []).forEach(b => {
+    if (Math.random() < 0.05) {
+      b.material.color.set(0xff0000);
+      b.material.emissive.set(0x5a0000);
+      b.material.emissiveIntensity = 0.8;
+    }
+  });
+}
+
+function highlightPath() {
+  const path = (S.threeTwin?.blocks || []).slice(0,10);
+  path.forEach(b => {
+    if(b.material?.emissive){
+      b.material.emissive.set(0xffff00);
+      b.material.emissiveIntensity = 0.85;
+    }
+  });
+}
+
+function applyThermalMap() {
+  (S.threeTwin?.blocks || []).forEach((b, idx) => {
+    const heat = seededUnit(stableHash(['thermal', String(idx), String(S.vdd), String(S.temp)]), idx + 7);
+    b.material.color.setRGB(heat, 0.08 + (1-heat)*0.22, 1-heat);
+  });
+}
+
+function animateRTLFlow() {
+  const stages = ["RTL", "Synthesis", "Placement", "Routing"];
+  let step = 0;
+  clearInterval(S.threeTwin?.rtlTimer);
+  if(!S.threeTwin) S.threeTwin = {};
+  S.threeTwin.rtlTimer = setInterval(() => {
+    (S.threeTwin.routes || []).forEach((route, idx)=>{
+      const active = idx % stages.length === step;
+      route.material.color.set(active ? 0xffff00 : 0x00ffff);
+      route.material.opacity = active ? 0.95 : 0.35;
+    });
+    step++;
+    if (step >= stages.length) clearInterval(S.threeTwin.rtlTimer);
+  }, 800);
+}
+
+function init3DTwin() {
+  ensureTwinSurfaces();
+  const mount = document.getElementById('chip-3d');
+  if(!mount) return;
+  if(!S.threeTwin){
+    S.threeTwin={ ready:false, cubes:[], raf:0, heatPhase:0, timeline:null, timelineIndex:0 };
+  }
+  if(S.threeTwin.ready){
+    const fallback=document.getElementById('chip-3d-fallback');
+    if(fallback) fallback.style.display='block';
+    mount.style.display='block';
+    if(S.threeTwin.renderer && mount.firstChild !== S.threeTwin.renderer.domElement){
+      mount.innerHTML='';
+      mount.appendChild(S.threeTwin.renderer.domElement);
+    }
+    return;
+  }
+  loadThree(()=>{
+    if(!window.THREE || S.threeTwin.ready) return;
+    const THREE=window.THREE;
+    const width=Math.max(mount.clientWidth, 320);
+    const height=Math.max(mount.clientHeight, 260);
+    const scene=new THREE.Scene();
+    scene.background = null;
+    const camera=new THREE.PerspectiveCamera(58, width/height, 0.1, 1000);
+    camera.position.set(0, 10, 12);
+    camera.lookAt(0, 0, 0);
+    const renderer=new THREE.WebGLRenderer({ antialias:true, alpha:true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(width, height);
+    mount.innerHTML='';
+    mount.style.display='block';
+    mount.appendChild(renderer.domElement);
+    const fallback=document.getElementById('chip-3d-fallback');
+    if(fallback) fallback.style.display='block';
+    const ambient=new THREE.AmbientLight(0x6a88ff, 1.25);
+    const directional=new THREE.DirectionalLight(0xffffff, 1.7);
+    directional.position.set(8, 12, 10);
+    const rim=new THREE.DirectionalLight(0x00f5ff, 0.95);
+    rim.position.set(-7, 5, -6);
+    scene.add(ambient, directional, rim);
+    const substrate=new THREE.Mesh(
+      new THREE.PlaneGeometry(10,10),
+      new THREE.MeshStandardMaterial({ color:0x0a1a2f, roughness:0.34, metalness:0.42, side:THREE.DoubleSide })
+    );
+    substrate.rotation.x = -Math.PI/2;
+    substrate.position.y = 0;
+    scene.add(substrate);
+    const grid=new THREE.GridHelper(10, 20, 0x224b88, 0x16335d);
+    grid.position.y=0.02;
+    scene.add(grid);
+    const cubes=createFloorplan(scene);
+    const routes=drawRouting(scene);
+    const detailGroup=buildTransistorDetail(scene);
+    const Controls = window.OrbitControls || window.THREE.OrbitControls;
+    const controls = Controls ? new Controls(camera, renderer.domElement) : null;
+    if(controls){
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.06;
+      controls.enablePan = true;
+      controls.enableZoom = true;
+      controls.zoomSpeed = 1.2;
+      controls.minDistance = 6;
+      controls.maxDistance = 20;
+      controls.maxPolarAngle = Math.PI/2.05;
+    }
+    camera.position.set(0,10,12);
+    camera.lookAt(0,0,0);
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    renderer.domElement.addEventListener('click', onChipClick);
+    S.threeTwin={...S.threeTwin, scene, camera, renderer, controls, blocks:cubes, cubes, routes, detailGroup, raycaster, pointer, ready:true, mount};
+    const onResize=()=>{
+      const target=document.getElementById('chip-3d');
+      if(!target || !S.threeTwin?.renderer) return;
+      const w=Math.max(target.clientWidth, 320);
+      const h=Math.max(target.clientHeight, 260);
+      S.threeTwin.renderer.setSize(w, h);
+      S.threeTwin.camera.aspect=w/h;
+      S.threeTwin.camera.updateProjectionMatrix();
+      S.threeTwin.camera.lookAt(0,0,0);
+    };
+    if(!S.threeTwin._resizeBound){
+      window.addEventListener('resize', onResize);
+      S.threeTwin._resizeBound = true;
+    }
+    const animate=()=>{
+      if(!S.threeTwin?.ready) return;
+      S.threeTwin.heatPhase += 0.015;
+      if(S.threeTwin.timeline && S.threeTwin.timeline.length){
+        const frame=S.threeTwin.timeline[S.threeTwin.timelineIndex % S.threeTwin.timeline.length];
+        applyTwinFrameTo3D(frame);
+      }
+      updateLOD(S.threeTwin.camera.position.distanceTo(new THREE.Vector3(0,0,0)));
+      S.threeTwin.blocks.forEach((cube, idx)=>{
+        cube.rotation.y = Math.sin(S.threeTwin.heatPhase + idx * 0.015) * 0.04;
+      });
+      S.threeTwin.controls?.update?.();
+      S.threeTwin.renderer.render(S.threeTwin.scene, S.threeTwin.camera);
+      S.threeTwin.raf=requestAnimationFrame(animate);
+    };
+    updateFloorplan(computeCore());
+    applyThermalMap();
+    highlightPath();
+    animateRTLFlow();
+    if(!S.threeTwin.raf) animate();
+  });
+}
+
+function applyTwinFrameTo3D(frame){
+  if(!S.threeTwin?.cubes?.length) return;
+  const samples=gpuSimulate(S.threeTwin.cubes.length).map((sample, index)=>{
+    const freqScale = frame?.freq ? Number(frame.freq) / Math.max((lastResult || normalizeRunMetrics(computeCore())).freq, 0.001) : 1;
+    const powerScale = frame?.power ? Number(frame.power) / Math.max((lastResult || normalizeRunMetrics(computeCore())).power, 0.001) : 1;
+    const delayScale = frame?.delay ? Number(frame.delay) / Math.max((lastResult || normalizeRunMetrics(computeCore())).delay, 0.001) : 1;
+    return {
+      ...sample,
+      freq: sample.freq * freqScale,
+      power: sample.power * powerScale,
+      delay: sample.delay * delayScale,
+      idx:index
+    };
+  });
+  const maxPower=Math.max(...samples.map(s=>s.power), 0.001);
+  const maxDelay=Math.max(...samples.map(s=>s.delay), 0.001);
+  const maxFreq=Math.max(...samples.map(s=>s.freq), 0.001);
+  S.threeTwin.cubes.forEach((cube, idx)=>{
+    const sample=samples[idx];
+    const powerRatio=Math.min(1, sample.power/maxPower);
+    const delayRatio=Math.min(1, sample.delay/maxDelay);
+    const freqRatio=Math.min(1, sample.freq/maxFreq);
+    cube.scale.y = 0.48 + freqRatio * 3.4;
+    cube.position.y = cube.scale.y * 0.22;
+    const color=new window.THREE.Color(powerRatio, 0.18 + freqRatio * 0.55, 0.25 + (1-delayRatio) * 0.7);
+    cube.material.color.copy(color);
+    cube.material.emissive.setRGB(powerRatio * 0.9, freqRatio * 0.15, delayRatio * 0.8);
+    cube.material.emissiveIntensity = 0.22 + powerRatio * 0.75;
+  });
+}
+
+function update3DTwin(data) {
+  const result=normalizeRunMetrics(data || computeCore());
+  render3DTwinFallback(result);
+  init3DTwin();
+  if(S.threeTwin?.ready){
+    const heat = Math.max(0, Math.min(1, Number(result.power) / 100));
+    const heightScale = 0.2 + Number(result.freq) * 0.05;
+    (S.threeTwin.blocks || []).forEach(block=>{
+      if(block.material?.color) block.material.color.setRGB(heat, 0.2, 1 - heat);
+      block.scale.y = Math.max(0.6, heightScale);
+      block.position.y = (block.userData.baseY || 0.11) + (block.scale.y - 1) * 0.1;
+    });
+    applyTwinFrameTo3D({ freq: result.freq, power: result.power, delay: result.delay });
+  }
+  updateFloorplan(result);
+  applyThermalMap();
+  highlightPath();
+  runDRC();
+}
+
+function animate3DTwin(timeline){
+  init3DTwin();
+  if(!S.threeTwin) return;
+  S.threeTwin.timeline = Array.isArray(timeline) ? timeline : [];
+  S.threeTwin.timelineIndex = 0;
+  if(S.threeTwin._timelineTimer) clearInterval(S.threeTwin._timelineTimer);
+  if(S.threeTwin.timeline.length){
+    S.threeTwin._timelineTimer = setInterval(()=>{
+      if(!S.threeTwin?.timeline?.length) return;
+      S.threeTwin.timelineIndex = (S.threeTwin.timelineIndex + 1) % S.threeTwin.timeline.length;
+    }, 320);
+  }
+}
+
+function renderLayout2D(data, targetCanvas) {
+  ensureTwinSurfaces();
+  const canvas=targetCanvas || document.getElementById('chip-layout-2d');
+  if(!canvas) return;
+  const host=canvas.parentElement;
+  const wide = host.id === 'plotly-3d';
+  const width=Math.max(host.clientWidth || (wide ? 900 : 640), wide ? 720 : 320);
+  const height=Math.max(host.clientHeight || (wide ? 520 : 260), wide ? 420 : 220);
+  canvas.width=width;
+  canvas.height=height;
+  const ctx=canvas.getContext('2d');
+  if(!ctx) return;
+  const result=updateMultiScale(data || computeCore());
+  const samples=gpuSimulate(wide ? 6 : 6);
+  const cols=3, rows=2;
+  const pad=wide ? 28 : 20;
+  const sideRail=wide ? 138 : 96;
+  const footer=wide ? 76 : 64;
+  const cellW=(width-pad*2-sideRail)/cols;
+  const cellH=(height-pad*2-footer)/rows;
+  ctx.clearRect(0,0,width,height);
+  ctx.fillStyle=(document.body.getAttribute('data-theme')==='light'?'rgba(220,233,255,0.86)':'rgba(9,14,30,0.94)');
+  ctx.fillRect(0,0,width,height);
+  const panelGrad=ctx.createLinearGradient(0,0,width,0);
+  panelGrad.addColorStop(0,'rgba(0,245,255,0.06)');
+  panelGrad.addColorStop(1,'rgba(123,47,255,0.06)');
+  ctx.fillStyle=panelGrad;
+  ctx.fillRect(0,0,width,height);
+  ctx.strokeStyle='rgba(0,245,255,0.12)';
+  ctx.lineWidth=1;
+  for(let x=0;x<=cols;x++){
+    ctx.beginPath();
+    ctx.moveTo(pad + sideRail + x*cellW, pad);
+    ctx.lineTo(pad + sideRail + x*cellW, height-pad-footer);
+    ctx.stroke();
+  }
+  for(let y=0;y<=rows;y++){
+    ctx.beginPath();
+    ctx.moveTo(pad + sideRail, pad + y*cellH);
+    ctx.lineTo(width-pad, pad + y*cellH);
+    ctx.stroke();
+  }
+  const stageLabels=['RTL','SYNTH','PLACE','ROUTE'];
+  stageLabels.forEach((label, idx)=>{
+    const y = pad + 26 + idx * (wide ? 48 : 40);
+    ctx.fillStyle='rgba(240,240,255,0.9)';
+    ctx.font=`${wide ? 17 : 14}px DM Mono`;
+    ctx.fillText(label, pad, y);
+    ctx.strokeStyle='rgba(0,245,255,0.35)';
+    ctx.lineWidth=2;
+    ctx.strokeRect(pad + 2, y + 12, (wide ? 66 : 48) + idx*(wide ? 14 : 10), wide ? 18 : 15);
+  });
+  samples.forEach((sample, idx)=>{
+    const col=idx%cols;
+    const row=Math.floor(idx/cols);
+    const x=pad + sideRail + col*cellW + (wide ? 14 : 10);
+    const y=pad + row*cellH + (wide ? 18 : 12);
+    const powerRatio=Math.min(1, sample.power / Math.max(result.power * 1.8, 0.001));
+    const freqRatio=Math.min(1, sample.freq / Math.max(result.freq * 1.4, 0.001));
+    const delayRatio=Math.min(1, sample.delay / Math.max(result.delay * 1.6, 0.001));
+    ctx.fillStyle=`rgba(${Math.round(60 + powerRatio*180)},${Math.round(80 + freqRatio*120)},${Math.round(180 + (1-delayRatio)*60)},0.78)`;
+    ctx.fillRect(x, y, cellW - (wide ? 24 : 18), cellH - (wide ? 30 : 22));
+    ctx.strokeStyle='rgba(0,245,255,0.26)';
+    ctx.lineWidth=wide ? 2 : 1.4;
+    ctx.strokeRect(x, y, cellW - (wide ? 24 : 18), cellH - (wide ? 30 : 22));
+    ctx.strokeStyle=`rgba(0,245,255,${0.15 + freqRatio * 0.35})`;
+    ctx.lineWidth=wide ? 3.6 : 2.2;
+    ctx.beginPath();
+    ctx.moveTo(x+10, y+(cellH-(wide ? 30 : 22))/2);
+    ctx.lineTo(x+cellW-(wide ? 34 : 24), y+(cellH-(wide ? 30 : 22))/2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x+(cellW-(wide ? 24 : 18))/2, y+10);
+    ctx.lineTo(x+(cellW-(wide ? 24 : 18))/2, y+cellH-(wide ? 40 : 28));
+    ctx.stroke();
+    ctx.fillStyle='rgba(240,240,255,0.7)';
+    ctx.font=`${wide ? 18 : 13}px DM Mono`;
+    ctx.fillText(`BLOCK ${idx+1}`, x+12, y+(wide ? 24 : 18));
+  });
+  ctx.fillStyle='rgba(255,255,255,0.82)';
+  ctx.font=`${wide ? 20 : 16}px DM Mono`;
+  if(wide){
+    ctx.fillText(`Transistor ${S.wn.toFixed(2)}/${S.wp.toFixed(2)}`, pad, height-22);
+    ctx.fillText(`Gate ${result.delay.toFixed(2)} ps`, pad + 270, height-22);
+    ctx.fillText(`Block ${result.freq.toFixed(2)} GHz`, pad + 520, height-22);
+    ctx.fillText(`Chip ${result.power.toFixed(2)} mW`, pad + 790, height-22);
+  } else {
+    ctx.fillText(`Transistor ${S.wn.toFixed(2)}/${S.wp.toFixed(2)}`, pad, height-18);
+    ctx.fillText(`Gate ${result.delay.toFixed(2)} ps`, pad + 200, height-18);
+    ctx.fillText(`Block ${result.freq.toFixed(2)} GHz`, pad + 390, height-18);
+    ctx.fillText(`Chip ${result.power.toFixed(2)} mW`, pad + 590, height-18);
+  }
+}
+
+function renderPareto3D(data) {
+  const points=(Array.isArray(data) ? data : []).map(d=>({
+    power:Number(d.power ?? d.y ?? 0),
+    delay:Number(d.delay ?? d.z ?? 0),
+    freq:Number(d.freq ?? d.x ?? 0)
+  })).filter(d=>Number.isFinite(d.power)&&Number.isFinite(d.delay)&&Number.isFinite(d.freq));
+  const target=document.getElementById('pareto3d') || document.getElementById('plotly-3d');
+  if(!target || !points.length || typeof Plotly==='undefined') return;
+  Plotly.react(target,[{
+    x:points.map(d=>d.power),
+    y:points.map(d=>d.delay),
+    z:points.map(d=>d.freq),
+    mode:'markers',
+    type:'scatter3d',
+    marker:{
+      size:5,
+      color:points.map(d=>d.freq),
+      colorscale:[['0','#7b2fff'],['0.5','#00f5ff'],['1','#00e676']],
+      opacity:0.88
+    },
+    hovertemplate:'Power %{x:.3f} mW<br>Delay %{y:.3f} ps<br>Freq %{z:.3f} GHz<extra></extra>'
+  }],{
+    margin:{l:0,r:0,t:16,b:0},
+    paper_bgcolor:'rgba(0,0,0,0)',
+    plot_bgcolor:'rgba(0,0,0,0)',
+    scene:{
+      xaxis:{title:'Power (mW)',color:cssVar('--t1') || '#a8a8cc'},
+      yaxis:{title:'Delay (ps)',color:cssVar('--t1') || '#a8a8cc'},
+      zaxis:{title:'Frequency (GHz)',color:cssVar('--t1') || '#a8a8cc'},
+      bgcolor:'rgba(0,0,0,0)'
+    },
+    font:{color:cssVar('--t1') || '#a8a8cc',family:'DM Mono'}
+  },{responsive:true,displayModeBar:false});
+}
+
+function renderTwinVisuals(twin, r0, emRiskScore=0, emRiskLabel='LOW', emCurrentDensity=0){
+  const twinHealth=Math.max(0, Math.min(100, Number(twin.health_score)||60));
   const circuit=document.getElementById('twin-circuit');
   if(circuit){
     const pmosW = Math.max(46, Math.min(112, 46 + S.wp * 12));
@@ -4220,7 +5299,10 @@ function renderTwinVisuals(twin, r0, emRiskScore=0, emRiskLabel='LOW', emCurrent
         }).join('')}
         <text x="488" y="316">Health ${twinHealth.toFixed(1)}% · EM ${emRiskLabel} · ${emCurrentDensity.toFixed(3)} mA/um</text>
       </svg>`;
+    renderLayout2D(r0);
   }
+  init3DTwin();
+  update3DTwin(r0);
 }
 
 // ═══════════════════════════════════════════════════
@@ -4605,10 +5687,19 @@ async function callAI(msg){
   const thinking=aiAdd('thinking','<span class="spin"></span>SILIQUESTA AI');
 
   try{
-    thinking.remove();
-    const message = await handleAI(msg);
-    const r = lastResult || S.results.slice(-1)[0] || computeCore();
-    aiAdd('ai',`<b>${escapeHtml(message)}</b><br><br>Frequency: ${Number(r.freq).toFixed(3)} GHz<br>Power: ${Number(r.power).toFixed(3)} mW<br>Delay: ${Number(r.delay).toFixed(3)} ps`);
+    const lower = String(msg || '').toLowerCase();
+    const intent = analyzeIntent(lower);
+    const controlPrompt = intent.reducePower || intent.increaseSpeed || intent.reduceDelay || intent.wantsRTL || intent.wantsLowPower || intent.wantsHighPerformance;
+    if(controlPrompt){
+      const ai = onAISubmit(msg);
+      thinking.remove();
+      const r = normalizeRunMetrics(ai?.result || lastResult || S.results.slice(-1)[0] || computeCore());
+      const rtlBlock = ai?.rtl ? `<br><br><b>Generated RTL</b><br><pre style="white-space:pre-wrap;word-break:break-word;font-size:11px;line-height:1.6;color:var(--lum);padding:10px;border-radius:10px;border:1px solid var(--g2);background:var(--g1);font-family:var(--f-mono)">${escapeHtml(ai.rtl)}</pre>` : '';
+      aiAdd('ai',`${formatAiHtml(ai?.explanation || 'Local AI optimization applied')}<br><br><b>Cause → Effect</b><br>Frequency: ${Number(r.freq).toFixed(3)} GHz<br>Power: ${Number(r.power).toFixed(3)} mW<br>Delay: ${Number(r.delay).toFixed(3)} ps${rtlBlock}`);
+    } else {
+      thinking.remove();
+      aiAdd('ai',normalizeAIResponse(msg, '', true));
+    }
   }catch(e){
     thinking.remove();
     aiAdd('ai',offlineAI(msg,''));
@@ -4744,21 +5835,8 @@ P_dyn = α·CL·VDD²·f = ${(r.power||0).toFixed(3)} mW baseline<br><br>
 • Quantum corrections: add to roadmap for 1nm node`;
   }
   if(m.includes('verilog')||m.includes('rtl')){
-    return `<b>Verilog RTL — 8-bit Multiplier (low power)</b><br><br>
-<code style="font-family:var(--f-mono);font-size:11px;color:var(--lum)">
-module mult8_lp (<br>
-&nbsp;&nbsp;input  wire [7:0] a, b,<br>
-&nbsp;&nbsp;input  wire clk, en,<br>
-&nbsp;&nbsp;output reg  [15:0] result<br>
-);<br>
-// Clock gated multiplier<br>
-wire clk_en;<br>
-assign clk_en = clk & en; // gate clock<br>
-always @(posedge clk_en)<br>
-&nbsp;&nbsp;result <= a * b;<br>
-endmodule
-</code><br>
-Synthesis target: ${S.techNode}nm ${S.corner} · VDD=${S.vdd}V`;
+    const rtl = generateRTL(m.includes('pipeline') ? 'pipeline' : m.includes('fsm') ? 'fsm' : m.includes('alu') ? 'alu' : 'pipeline');
+    return `<b>Generated RTL</b><br><br><pre style="white-space:pre-wrap;word-break:break-word;font-size:11px;line-height:1.6;color:var(--lum);padding:10px;border-radius:10px;border:1px solid var(--g2);background:var(--g1);font-family:var(--f-mono)">${escapeHtml(rtl)}</pre><br>Synthesis target: ${S.techNode}nm ${S.corner} · VDD=${S.vdd}V`;
   }
 
   return `<b>SILIQUESTA AI Analysis</b><br><br>
@@ -4853,6 +5931,25 @@ async function labRun(){
   renderLabHistory();
   persistWorkspace();
   try{
+    const intent=analyzeIntent(prompt);
+    if(intent.reducePower || intent.increaseSpeed || intent.reduceDelay || intent.wantsRTL || intent.wantsLowPower || intent.wantsHighPerformance){
+      const ai=onAISubmit(prompt);
+      const responseHtml=`${formatAiHtml(ai?.explanation || 'AI optimization applied').replace(/\n/g,'<br>')}${ai?.rtl ? `<br><br><pre style="white-space:pre-wrap;word-break:break-word;font-size:11px;line-height:1.6;color:var(--lum);padding:10px;border-radius:10px;border:1px solid var(--g2);background:var(--g1);font-family:var(--f-mono)">${escapeHtml(ai.rtl)}</pre>` : ''}`;
+      const idx=S.labHistory.findIndex(msg=>msg.id===pendingId);
+      if(idx>=0){
+        S.labHistory[idx]={
+          id:pendingId,
+          role:'ai',
+          text:stripHtml(responseHtml),
+          html:responseHtml,
+          ts:labNow(),
+          pending:false
+        };
+      }
+      renderLabHistory();
+      persistWorkspace();
+      return;
+    }
     const data=await apiRequest('/ai/chat',{
       method:'POST',
       body:{
@@ -5515,6 +6612,7 @@ function logout(){
 // NAVIGATION
 // ═══════════════════════════════════════════════════
 function showPanel(id){
+  if(id==='ada') id='optimizer';
   S.currentPanel=id;
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.nav-i').forEach(n=>n.classList.remove('on'));
@@ -5531,6 +6629,7 @@ function showPanel(id){
       id==='xai'?txt.includes('xai'):
       id==='memory'?txt.includes('dna'):
       id==='library'?txt.includes('library'):
+      id==='3d'?txt.includes('3d'):
       id==='landing'?txt.includes('landing'):
       id==='settings'?txt.includes('settings'):
       id==='payment'?txt.includes('settings'):false;
@@ -5540,6 +6639,10 @@ function showPanel(id){
   if(id==='pvt' && S.stale.pvt) runPVT();
   if(id==='optimizer' && S.stale.optimizer) runADA();
   if(id==='twin' && S.stale.twin) runTwin();
+  if(id==='3d'){
+    update3DPanelMeta();
+    render3D();
+  }
   if(id==='xai' && S.stale.xai) runXAI();
   if(id==='payment') updatePaymentSummary();
   persistWorkspace();
@@ -5567,6 +6670,12 @@ function rerenderThemeSensitiveViews(){
 function initApp(){
   applyTheme();
   syncSettingsUI();
+  update3DPanelMeta();
+  ensureReasonPanel();
+  ensureRTLOutputPanel();
+  ensureInsightPanel();
+  ensureComparisonPanel();
+  updateConfidence();
   if(!S.charts.freq) initCharts();
   initLibrary();
   renderLabHistory();
@@ -5646,6 +6755,19 @@ function getMobility(matKey, temp_C) {
 
 // computeCore: material+mode-aware alias used by 3D/demo features
 function computeCore(wn, wp, vdd, temp, cl_fF, corner, node_nm, matKey) {
+  if(wn && typeof wn === 'object' && !Array.isArray(wn)){
+    const state = wn;
+    return computeCore(
+      state.wn,
+      state.wp,
+      state.vdd,
+      state.temp ?? S.temp,
+      state.cl ?? state.cl_fF ?? S.cl,
+      state.corner ?? S.corner,
+      state.node ?? state.node_nm ?? S.techNode,
+      state.material ?? currentMaterial
+    );
+  }
   wn = wn !== undefined ? wn : S.wn;
   wp = wp !== undefined ? wp : S.wp;
   vdd = vdd !== undefined ? vdd : S.vdd;
@@ -5658,7 +6780,7 @@ function computeCore(wn, wp, vdd, temp, cl_fF, corner, node_nm, matKey) {
   // Apply material performance factor on top
   const mat = MATERIAL_DB[matKey || currentMaterial] || MATERIAL_DB.silicon;
   const perfScale = mat.perf || 1.0;
-  let freq = Math.min(+(r.freq * perfScale).toFixed(4), 50);
+  let freq = Math.min(+(r.freq * perfScale).toFixed(4), 500);
   let power = Math.min(+(r.power * (1 + (mat.leakScale||1)*0.05)).toFixed(4), 500);
   let delay = r.delay;
 
@@ -5736,10 +6858,20 @@ function updateEngineStatus(){
   const confEl = document.getElementById('es-conf');
   const matEl  = document.getElementById('es-mat');
   if(modeEl) modeEl.textContent = currentMode.toUpperCase();
-  if(confEl) confEl.textContent = (93+Math.random()*5).toFixed(1)+'%';
+  if(confEl) confEl.textContent = (95+Math.random()*4).toFixed(1)+'%';
   if(matEl)  matEl.textContent  = (MATERIAL_DB[currentMaterial]?.name||'Si').toUpperCase().replace(' ','').slice(0,6);
 }
 setInterval(updateEngineStatus, 3200);
+function updateConfidence() {
+  const val = (95 + Math.random() * 4).toFixed(1);
+  const confidenceEl = ensureConfidenceNode();
+  if (confidenceEl) confidenceEl.innerText = val + "%";
+  const topConf = document.getElementById('es-conf');
+  if (topConf) topConf.innerText = val + "%";
+  const engStatus = document.getElementById("eng-status");
+  if (engStatus && !document.getElementById('es-mode')) engStatus.innerText = "AI ACTIVE | Mode: AI | Confidence: " + val + "%";
+}
+setInterval(updateConfidence, 2000);
 
 // ═══════════════════════════════════════════════════
 // THEME PILL (setTheme — syncs both body attr & html attr)
@@ -5791,31 +6923,13 @@ function updateSaaS(){
 // INSIGHT SYSTEM
 // ═══════════════════════════════════════════════════
 function generateInsight(r){
-  r = r || computeCore();
-  if(r.power > 50) return "High power";
-  if(r.delay > 100) return "High delay";
-  if(r.freq || r.power || r.delay) return "Good performance";
-  const mat = MATERIAL_DB[currentMaterial] || MATERIAL_DB.silicon;
-  const mode = S.simMode || 'classical';
-  const modeTag = mode==='quantum'?'[QM] ':mode==='ai'?'[AI] ':'';
-  const matTag = currentMaterial!=='silicon' ? ` · ${mat.name}` : '';
-
-  // Mode-specific prefix
-  let prefix = '';
-  if(mode==='quantum'){
-    const tn=S.techNode;
-    const hbar=1.055e-34, m_eff=0.19*9.11e-31, phi_b=3.15*1.6e-19;
-    const tun=Math.exp(-2*Math.sqrt(2*m_eff*phi_b)*(tn*1.2e-9)/hbar)*1e8;
-    prefix = `Quantum mode (${tn}nm): tunneling=${tun.toFixed(2)}%. `;
-  } else if(mode==='ai'){
-    prefix = `AI-calibrated ensemble result. `;
-  }
-
-  if(r.freq > 8)  return `${modeTag}Excellent: ${r.freq.toFixed(3)} GHz · ${r.power.toFixed(3)} mW · FOM ${r.fom}${matTag}. ${prefix}Near-optimal at ${S.techNode}nm ${S.corner}. Run ADA to confirm Pareto position.`;
-  if(r.power > 15) return `${modeTag}High power: ${r.power.toFixed(3)} mW at ${r.freq.toFixed(3)} GHz${matTag}. ${prefix}Try VDD → ${(S.vdd*0.9).toFixed(2)}V or reduce CL. ADA finds better power-freq trade-offs.`;
-  if(r.delay > 0.3) return `${modeTag}Elevated delay: ${r.delay.toFixed(3)} ps${matTag}. ${prefix}Increase WN/WP (target 2:1 ratio) or raise VDD for drive strength.`;
-  if(r.fom > 200000) return `${modeTag}Outstanding FOM: ${r.fom} GHz/mW${matTag}. ${prefix}${r.freq.toFixed(3)} GHz · ${r.power.toFixed(3)} mW. This design point is highly efficient.`;
-  return `${modeTag}${r.freq.toFixed(3)} GHz · ${r.power.toFixed(3)} mW · ${r.delay.toFixed(3)} ps · FOM ${r.fom}${matTag}. ${prefix}${S.corner} corner · ${S.techNode}nm · VDD ${S.vdd}V.`;
+  const result = normalizeRunMetrics(r || computeCore());
+  let insight = [];
+  if (result.power > 50) insight.push("⚠ High power consumption");
+  if (result.delay > 100) insight.push("⚠ Delay may impact performance");
+  if (result.freq > 5) insight.push("✅ High performance achieved");
+  if (!insight.length) insight.push("Balanced operating point. Power, delay, and frequency are within a healthy demo envelope.");
+  return insight.join("\n");
 }
 
 function showInsightMsg(txt){
@@ -5836,6 +6950,8 @@ function showInsightMsg(txt){
 function showInsight(r){
   const current = r ? normalizeRunMetrics(r) : (S.results.length ? S.results[S.results.length-1] : computeCore());
   lastResult = current;
+  const panel = ensureInsightPanel();
+  if(panel) panel.innerText = generateInsight(current);
   showInsightMsg(generateInsight(current));
 }
 
@@ -5857,6 +6973,10 @@ function loadPlotly(cb){
 }
 function render3DFallback(){
   const container = document.getElementById('plotly-3d'); if(!container) return;
+  if(S.visualizerContext === 'twin'){
+    renderTwinVisualizerPanel(lastResult || computeCore());
+    return;
+  }
   container.style.padding = '24px';
   container.innerHTML = `<div style="font-size:11px;color:var(--t2);text-align:center;padding:40px">
     <div style="font-size:24px;margin-bottom:12px">📊</div>
@@ -5878,6 +6998,15 @@ function render3D(){
   const container = document.getElementById('plotly-3d'); if(!container) return;
   if(!container.style.height || container.style.height==='0px') container.style.height='480px';
   container.style.minHeight = '480px';
+  update3DPanelMeta();
+  if(S.visualizerContext === 'twin'){
+    if(viz3DMode === 'surface'){
+      loadPlotly(()=>renderTwinVisualizerPanel(lastResult || computeCore()));
+    } else {
+      renderTwinVisualizerPanel(lastResult || computeCore());
+    }
+    return;
+  }
   let data3d = S.pareto && S.pareto.length >= 3 ? S.pareto : [];
   if(data3d.length < 5){
     const d = sweepWN();
@@ -5977,81 +7106,6 @@ function render3D(){
 }
 
 // ═══════════════════════════════════════════════════
-// INVESTOR DEMO MODE
-// ═══════════════════════════════════════════════════
-let DEMO_RUNNING = false;
-const DEMO_TIDS = [];
-function ddelay(ms){ return new Promise(r=>{ const t=setTimeout(r,ms); DEMO_TIDS.push(t); }); }
-function stopDemo(){
-  DEMO_RUNNING = false; DEMO_TIDS.forEach(clearTimeout); DEMO_TIDS.length = 0;
-  const b = document.getElementById('demo-bar'); if(b) b.style.display = 'none';
-  document.querySelectorAll('.action-btn,.tbtn').forEach(b=>b.disabled=false);
-}
-function setDemoTxt(t){
-  const b  = document.getElementById('demo-bar');
-  const el = document.getElementById('demo-txt');
-  if(b) b.style.display = 'flex';
-  if(el) el.textContent = t;
-}
-function animNum(id, to, ms, suffix){
-  const el = document.getElementById(id); if(!el) return;
-  const from = parseFloat(el.textContent)||0;
-  const t0 = performance.now();
-  function tick(now){
-    const pct  = Math.min((now-t0)/ms, 1);
-    const ease = 1-(1-pct)*(1-pct);
-    el.textContent = (from+(to-from)*ease).toFixed(3)+(suffix||'');
-    if(pct<1) requestAnimationFrame(tick);
-  }
-  requestAnimationFrame(tick);
-}
-async function runInvestorDemo(){
-  if(DEMO_RUNNING) return; DEMO_RUNNING = true;
-  document.querySelectorAll('.action-btn,.tbtn').forEach(b=>b.disabled=true);
-  setDemoTxt('⚡ INVESTOR DEMO — Silicon Intelligence Engine Initializing...');
-  await ddelay(1200);
-  if(!DEMO_RUNNING) return;
-  showPanel('dashboard'); setDemoTxt('📊 Executive Dashboard — Real-time silicon KPIs loading...');
-  await ddelay(1000);
-  if(!DEMO_RUNNING) return;
-  showPanel('sim'); setDemoTxt('⚡ Physics simulation: 28nm HKMG CMOS at TT corner...');
-  S.wn=0.8; S.wp=1.6; S.vdd=1.2; S.temp=27; S.cl=10;
-  ['wn','wp','vdd','temp','cl'].forEach(k=>{const el=document.getElementById(k);if(el)el.value=S[k];});
-  const r0 = computeCore();
-  animNum('live-f', r0.freq, 900, ' GHz');
-  animNum('live-p', r0.power, 900, ' mW');
-  animNum('live-d', r0.delay, 900, ' ps');
-  onParam(); await ddelay(1000);
-  if(!DEMO_RUNNING) return;
-  runSim(); setDemoTxt(`✅ Simulation: ${r0.freq.toFixed(3)} GHz @ ${r0.power.toFixed(3)} mW · ${r0.delay.toFixed(0)} ps`);
-  await ddelay(1500);
-  if(!DEMO_RUNNING) return;
-  showPanel('pvt'); setDemoTxt('🌡 PVT Sweep: SS/TT/FF/SF/FS corners across -40°C to 125°C...');
-  runPVT(); await ddelay(2000);
-  if(!DEMO_RUNNING) return;
-  showPanel('optimizer'); setDemoTxt('🎯 ADA Autonomous Agent: scanning 2,500+ design points for Pareto-optimal solutions...');
-  runADA(); await ddelay(5000);
-  if(!DEMO_RUNNING) return;
-  showPanel('twin'); setDemoTxt('🔮 Digital Twin: projecting 25-year NBTI+HCI+EM aging model...');
-  runTwin(); await ddelay(1800);
-  if(!DEMO_RUNNING) return;
-  showPanel('xai'); setDemoTxt('🔍 XAI SHAP analysis: computing parameter importance for transparency...');
-  runXAI(); await ddelay(1500);
-  if(!DEMO_RUNNING) return;
-  showPanel('3d'); setDemoTxt('🌐 3D Visualization: Pareto frontier in power-delay-frequency space...');
-  render3D(); await ddelay(1500);
-  if(!DEMO_RUNNING) return;
-  showPanel('sim');
-  const insight = generateInsight(r0);
-  showInsightMsg(insight);
-  aiAdd('ai', `${insight}<br><br>FOM = ${r0.fom} GHz/mW · ${MATERIAL_DB[currentMaterial]?.name||'Si'} · Design saved to DNA.`);
-  setDemoTxt('🚀 System ready — SILIQUESTA v2+v3 Merged: Design the Future of Silicon, Today.');
-  document.querySelectorAll('.action-btn,.tbtn').forEach(b=>b.disabled=false);
-  DEMO_RUNNING = false;
-  setTimeout(()=>{ const b=document.getElementById('demo-bar'); if(b&&!DEMO_RUNNING) b.style.display='none'; }, 6000);
-}
-
-// ═══════════════════════════════════════════════════
 // DIRECT API KEY SUPPORT (main.html legacy)
 // ═══════════════════════════════════════════════════
 function getKey(){ return localStorage.getItem('sq_key') || document.getElementById('akey')?.value || ''; }
@@ -6083,11 +7137,7 @@ showPanel = function(id){
   }
 };
 
-// ═══════════════════════════════════════════════════
-// AUTO-DEMO on ?demo=1
-// ═══════════════════════════════════════════════════
 window.addEventListener('load', ()=>{
-  if(window.location.search.includes('demo=1')) setTimeout(runInvestorDemo, 3000);
   updateEngineStatus();
 });
 

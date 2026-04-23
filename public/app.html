@@ -4556,8 +4556,117 @@ function updateMultiScale(data){
 }
 
 let _threeLoading = false;
+function installOrbitControlsFallback(THREE){
+  if(!THREE || THREE.OrbitControls) return;
+  class OrbitControls {
+    constructor(camera, domElement){
+      this.object = camera;
+      this.domElement = domElement;
+      this.target = new THREE.Vector3(0, 0, 0);
+      this.enableZoom = true;
+      this.enablePan = true;
+      this.enableRotate = true;
+      this.enableDamping = true;
+      this.dampingFactor = 0.08;
+      this.minDistance = 2;
+      this.maxDistance = 50;
+      this.zoomSpeed = 1.2;
+      this.panSpeed = 0.8;
+      this.rotateSpeed = 0.6;
+      this.state = 'none';
+      this.scale = 1;
+      this.spherical = new THREE.Spherical();
+      this.sphericalDelta = new THREE.Spherical(0, 0, 0);
+      this.panOffset = new THREE.Vector3();
+      this.pointer = new THREE.Vector2();
+      this.domElement.style.touchAction = 'none';
+      this._onContextMenu = (event)=>event.preventDefault();
+      this._onPointerDown = (event)=>{
+        if(event.button === 0 && this.enableRotate){
+          this.state = 'rotate';
+        } else if((event.button === 1 || event.button === 2) && this.enablePan){
+          this.state = 'pan';
+        } else {
+          return;
+        }
+        this.pointer.set(event.clientX, event.clientY);
+        this.domElement.setPointerCapture?.(event.pointerId);
+      };
+      this._onPointerMove = (event)=>{
+        if(this.state === 'none') return;
+        const dx = event.clientX - this.pointer.x;
+        const dy = event.clientY - this.pointer.y;
+        this.pointer.set(event.clientX, event.clientY);
+        if(this.state === 'rotate' && this.enableRotate){
+          this.sphericalDelta.theta -= (dx / Math.max(this.domElement.clientWidth, 1)) * Math.PI * this.rotateSpeed;
+          this.sphericalDelta.phi -= (dy / Math.max(this.domElement.clientHeight, 1)) * Math.PI * this.rotateSpeed;
+        } else if(this.state === 'pan' && this.enablePan){
+          const offset = new THREE.Vector3().copy(this.object.position).sub(this.target);
+          const distance = Math.max(offset.length(), 1) * 0.0018 * this.panSpeed;
+          const panX = new THREE.Vector3().setFromMatrixColumn(this.object.matrix, 0).multiplyScalar(-dx * distance);
+          const panY = new THREE.Vector3().setFromMatrixColumn(this.object.matrix, 1).multiplyScalar(dy * distance);
+          this.panOffset.add(panX).add(panY);
+        }
+      };
+      this._onPointerUp = (event)=>{
+        this.state = 'none';
+        this.domElement.releasePointerCapture?.(event.pointerId);
+      };
+      this._onWheel = (event)=>{
+        if(!this.enableZoom) return;
+        event.preventDefault();
+        const factor = Math.exp((event.deltaY / 240) * this.zoomSpeed * 0.2);
+        this.scale *= factor;
+      };
+      this.domElement.addEventListener('contextmenu', this._onContextMenu);
+      this.domElement.addEventListener('pointerdown', this._onPointerDown);
+      this.domElement.addEventListener('pointermove', this._onPointerMove);
+      this.domElement.addEventListener('pointerup', this._onPointerUp);
+      this.domElement.addEventListener('pointerleave', this._onPointerUp);
+      this.domElement.addEventListener('wheel', this._onWheel, { passive:false });
+      this.updateFromCamera();
+      this.update();
+    }
+    updateFromCamera(){
+      const offset = new THREE.Vector3().copy(this.object.position).sub(this.target);
+      this.spherical.setFromVector3(offset);
+    }
+    update(){
+      this.spherical.theta += this.sphericalDelta.theta;
+      this.spherical.phi += this.sphericalDelta.phi;
+      this.spherical.phi = Math.max(0.05, Math.min(Math.PI - 0.05, this.spherical.phi));
+      this.spherical.radius = Math.max(this.minDistance, Math.min(this.maxDistance, this.spherical.radius * this.scale));
+      this.target.add(this.panOffset);
+      const offset = new THREE.Vector3().setFromSpherical(this.spherical);
+      this.object.position.copy(this.target).add(offset);
+      this.object.lookAt(this.target);
+      if(this.enableDamping){
+        const damp = 1 - this.dampingFactor;
+        this.sphericalDelta.theta *= damp;
+        this.sphericalDelta.phi *= damp;
+        this.panOffset.multiplyScalar(damp);
+        this.scale += (1 - this.scale) * this.dampingFactor;
+      } else {
+        this.sphericalDelta.theta = 0;
+        this.sphericalDelta.phi = 0;
+        this.panOffset.set(0, 0, 0);
+        this.scale = 1;
+      }
+    }
+    dispose(){
+      this.domElement.removeEventListener('contextmenu', this._onContextMenu);
+      this.domElement.removeEventListener('pointerdown', this._onPointerDown);
+      this.domElement.removeEventListener('pointermove', this._onPointerMove);
+      this.domElement.removeEventListener('pointerup', this._onPointerUp);
+      this.domElement.removeEventListener('pointerleave', this._onPointerUp);
+      this.domElement.removeEventListener('wheel', this._onWheel);
+    }
+  }
+  THREE.OrbitControls = OrbitControls;
+}
 function loadThree(cb){
   if(window.THREE && (!window.OrbitControls || window.THREE.OrbitControls || window.OrbitControls)){
+    installOrbitControlsFallback(window.THREE);
     cb();
     return;
   }
@@ -4576,10 +4685,11 @@ function loadThree(cb){
   loadScript(
     'https://unpkg.com/three@0.160.0/build/three.min.js',
     ()=>{
+      installOrbitControlsFallback(window.THREE);
       loadScript(
         'https://unpkg.com/three@0.160.0/examples/js/controls/OrbitControls.js',
-        ()=>{ _threeLoading=false; cb(); },
-        ()=>{ _threeLoading=false; cb(); }
+        ()=>{ installOrbitControlsFallback(window.THREE); _threeLoading=false; cb(); },
+        ()=>{ installOrbitControlsFallback(window.THREE); _threeLoading=false; cb(); }
       );
     },
     ()=>{ _threeLoading=false; cb(); }
@@ -4916,52 +5026,64 @@ function renderTwinVisualizerPanel(data){
 
 function createFloorplan(scene){
   const THREE = window.THREE;
-  const size = 80;
-  const spacing = 0.25;
+  const size = 40;
+  const spacing = 0.4;
   const count = size * size;
-  const geometry = new THREE.BoxGeometry(0.2,1,0.2);
+  const geometry = new THREE.BoxGeometry(0.3,1,0.3);
   const material = new THREE.MeshStandardMaterial({
-    color:0x1e90ff,
-    emissive:0x06131f,
-    emissiveIntensity:0.22,
-    roughness:0.22,
-    metalness:0.62
+    color:0xffffff,
+    roughness:0.3,
+    metalness:0.4,
+    emissive:0xffffff,
+    emissiveIntensity:0.2,
+    vertexColors:true
   });
-  material.vertexColors = true;
   const mesh = new THREE.InstancedMesh(geometry, material, count);
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   if(mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  mesh.frustumCulled = true;
+  mesh.frustumCulled = false;
   mesh.userData.kind = 'block-grid';
   scene.add(mesh);
   const blocks = [];
   const dummy = new THREE.Object3D();
   let idx = 0;
   for (let x=0; x<size; x++) {
-    for (let y=0; y<size; y++) {
+    for (let z=0; z<size; z++) {
+      const power = seededUnit(stableHash(['floorplan', String(x), String(z)]), idx + 1);
+      let colorHex;
+      if (power < 0.25) colorHex = 0x00ffff;
+      else if (power < 0.5) colorHex = 0x00ff00;
+      else if (power < 0.75) colorHex = 0xffff00;
+      else colorHex = 0xff0000;
+      const height = Math.max(0.22, power * 2);
       const px = (x - size / 2) * spacing;
-      const pz = (y - size / 2) * spacing;
-      const net = `N${x % 8}-${y % 8}`;
+      const pz = (z - size / 2) * spacing;
+      const net = `N${x % 8}-${z % 8}`;
       const meta = {
         idx,
         x:px,
         z:pz,
-        height:0.8,
-        power:0.1,
-        delay:0.1,
-        freq:0.1,
+        height,
+        power,
+        delay:1 - power,
+        freq:0.35 + power * 0.65,
+        basePower:power,
+        baseDelay:1 - power,
+        baseFreq:0.35 + power * 0.65,
+        baseColor:colorHex,
         net,
-        type:(x + y) % 5 === 0 ? 'critical' : 'cell',
+        type:(x + z) % 5 === 0 ? 'critical' : 'cell',
         selected:false,
+        hovered:false,
         violation:false,
         path:false,
-        thermal:((x % 7) + (y % 5)) / 12
+        thermal:power
       };
       dummy.position.set(px, meta.height * 0.5, pz);
       dummy.scale.set(1, meta.height, 1);
       dummy.updateMatrix();
       mesh.setMatrixAt(idx, dummy.matrix);
-      mesh.setColorAt(idx, new THREE.Color(0x00ffcc));
+      mesh.setColorAt(idx, new THREE.Color(colorHex));
       blocks.push(meta);
       idx++;
     }
@@ -5027,10 +5149,10 @@ function buildTransistorDetail(scene){
 }
 
 function powerColor(powerRatio){
-  if(powerRatio < 0.3) return { color:[0.0, 0.95, 1.0], emissive:[0.0,0.35,0.45] };
-  if(powerRatio < 0.6) return { color:[1.0, 0.86, 0.18], emissive:[0.38,0.28,0.02] };
-  if(powerRatio < 0.8) return { color:[1.0, 0.58, 0.0], emissive:[0.48,0.18,0.0] };
-  return { color:[1.0, 0.18, 0.12], emissive:[0.55,0.08,0.06] };
+  if(powerRatio < 0.25) return { color:[0.0, 1.0, 1.0], emissive:[0.0,0.35,0.35] };
+  if(powerRatio < 0.5) return { color:[0.0, 1.0, 0.0], emissive:[0.0,0.32,0.0] };
+  if(powerRatio < 0.75) return { color:[1.0, 1.0, 0.0], emissive:[0.35,0.35,0.0] };
+  return { color:[1.0, 0.0, 0.0], emissive:[0.45,0.0,0.0] };
 }
 
 function applyBlockInstances(time = 0){
@@ -5049,9 +5171,10 @@ function applyBlockInstances(time = 0){
     const color = new THREE.Color(...mapped.color);
     if(meta.violation) color.setRGB(1,0.1,0.1);
     if(meta.path) color.lerp(new THREE.Color(0x00ff66), 0.35 + pulse * 0.25);
+    if(meta.hovered) color.lerp(new THREE.Color(0xffffff), 0.2 + pulse * 0.1);
     if(meta.selected) color.lerp(new THREE.Color(0x00ffff), 0.45 + pulse * 0.3);
     mesh.setColorAt(idx, color);
-    const height = Math.max(0.16, 0.2 + powerRatio * 1.2 + freqRatio * 0.85);
+    const height = Math.max(0.18, 0.2 + powerRatio * 1.25 + freqRatio * 0.95 + (meta.hovered ? 0.18 : 0));
     meta.height = height;
     dummy.position.set(meta.x, height * 0.5, meta.z);
     dummy.scale.set(1, height, 1);
@@ -5061,8 +5184,8 @@ function applyBlockInstances(time = 0){
   mesh.instanceMatrix.needsUpdate = true;
   if(mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   if(mesh.material){
-    mesh.material.emissive = new THREE.Color(0x081018);
-    mesh.material.emissiveIntensity = 0.32 + pulse * 0.08;
+    mesh.material.emissive = new THREE.Color(0xffffff);
+    mesh.material.emissiveIntensity = 0.15 + pulse * 0.05;
   }
 }
 
@@ -5146,16 +5269,13 @@ function updateLOD(cameraZoom) {
 function updateFloorplan(data) {
   if(!S.threeTwin?.blocks?.length) return;
   const result = normalizeRunMetrics(data || computeCore());
-  const maxPower = Math.max(result.power, 0.001);
-  const maxFreq = Math.max(result.freq, 0.001);
-  const maxDelay = Math.max(result.delay, 0.001);
   S.threeTwin.blocks.forEach((meta, i) => {
     const waveA = Math.sin((meta.x + 10.5) * 0.38 + result.freq * 0.9 + i * 0.0006);
     const waveB = Math.cos((meta.z + 10.5) * 0.41 + result.power * 0.13);
     const activity = Math.max(0, Math.min(1, (waveA + waveB + 2) / 4));
-    meta.power = Math.max(0, Math.min(1, (result.power / maxPower) * (0.35 + activity * 0.75)));
-    meta.freq = Math.max(0, Math.min(1, (result.freq / maxFreq) * (0.45 + activity * 0.55)));
-    meta.delay = Math.max(0, Math.min(1, (result.delay / maxDelay) * (0.55 + (1 - activity) * 0.45)));
+    meta.power = Math.max(0, Math.min(1, meta.basePower * 0.55 + activity * 0.45));
+    meta.freq = Math.max(0, Math.min(1, meta.baseFreq * 0.5 + activity * 0.5));
+    meta.delay = Math.max(0, Math.min(1, meta.baseDelay * 0.55 + (1 - activity) * 0.45));
     meta.thermal = Math.max(0, Math.min(1, meta.power * 0.8 + meta.delay * 0.2));
     meta.path = i % 97 === 0 || (Math.abs(meta.x - meta.z) < 0.12 && i % 13 === 0);
     meta.violation = meta.power > 0.88 && meta.delay > 0.78;
@@ -5164,7 +5284,7 @@ function updateFloorplan(data) {
   applyBlockInstances(S.threeTwin.heatPhase || 0);
 }
 
-function onChipClick(event) {
+function getChipIntersection(event) {
   if(!S.threeTwin?.raycaster || !S.threeTwin?.renderer || !S.threeTwin?.camera) return;
   const rect = S.threeTwin.renderer.domElement.getBoundingClientRect();
   S.threeTwin.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -5172,16 +5292,42 @@ function onChipClick(event) {
   S.threeTwin.raycaster.setFromCamera(S.threeTwin.pointer, S.threeTwin.camera);
   const targets = [S.threeTwin.blockMesh, ...(S.threeTwin.detailGroup?.children || [])].filter(Boolean);
   const intersects = S.threeTwin.raycaster.intersectObjects(targets, false);
-  if (intersects.length > 0) {
-    const obj = intersects[0].object;
-    if(typeof intersects[0].instanceId === 'number' && S.threeTwin.blocks?.[intersects[0].instanceId]){
-      S.threeTwin.selectedNet = S.threeTwin.blocks[intersects[0].instanceId].net;
-      S.threeTwin.blocks.forEach(meta=>{ meta.selected = meta.net === S.threeTwin.selectedNet; });
-      applyBlockInstances(S.threeTwin.heatPhase || 0);
-    } else if(obj.material?.emissive){
-      obj.material.emissive.set(0x00ffff);
-      obj.material.emissiveIntensity = 0.95;
-    }
+  return intersects[0] || null;
+}
+
+function onChipPointerMove(event) {
+  if(!S.threeTwin?.renderer) return;
+  const hit = getChipIntersection(event);
+  const nextIdx = typeof hit?.instanceId === 'number' ? hit.instanceId : null;
+  if(S.threeTwin.hoveredIdx === nextIdx){
+    S.threeTwin.renderer.domElement.style.cursor = hit ? 'pointer' : 'grab';
+    return;
+  }
+  S.threeTwin.hoveredIdx = nextIdx;
+  (S.threeTwin.blocks || []).forEach((meta, idx)=>{ meta.hovered = idx === nextIdx; });
+  S.threeTwin.renderer.domElement.style.cursor = hit ? 'pointer' : 'grab';
+  applyBlockInstances(S.threeTwin.heatPhase || 0);
+}
+
+function onChipPointerLeave() {
+  if(!S.threeTwin?.renderer) return;
+  S.threeTwin.hoveredIdx = null;
+  (S.threeTwin.blocks || []).forEach(meta=>{ meta.hovered = false; });
+  S.threeTwin.renderer.domElement.style.cursor = 'grab';
+  applyBlockInstances(S.threeTwin.heatPhase || 0);
+}
+
+function onChipClick(event) {
+  const hit = getChipIntersection(event);
+  if (!hit) return;
+  const obj = hit.object;
+  if(typeof hit.instanceId === 'number' && S.threeTwin.blocks?.[hit.instanceId]){
+    S.threeTwin.selectedNet = S.threeTwin.blocks[hit.instanceId].net;
+    S.threeTwin.blocks.forEach(meta=>{ meta.selected = meta.net === S.threeTwin.selectedNet; });
+    applyBlockInstances(S.threeTwin.heatPhase || 0);
+  } else if(obj.material?.emissive){
+    obj.material.emissive.set(0x00ffff);
+    obj.material.emissiveIntensity = 0.95;
   }
 }
 
@@ -5239,7 +5385,7 @@ function init3DTwin() {
     S.threeTwin.renderer.setSize(w, h);
     S.threeTwin.camera.aspect=w/h;
     S.threeTwin.camera.updateProjectionMatrix();
-    S.threeTwin.camera.position.set(12,10,15);
+    S.threeTwin.camera.position.set(10,10,15);
     S.threeTwin.camera.lookAt(0,0,0);
     return;
   }
@@ -5249,13 +5395,15 @@ function init3DTwin() {
     const width=Math.max(mount.clientWidth || window.innerWidth, 640);
     const height=Math.max(mount.clientHeight || window.innerHeight, 420);
     const scene=new THREE.Scene();
-    scene.background = new THREE.Color(0x000000);
+    scene.background = new THREE.Color(0x030813);
+    scene.fog = new THREE.Fog(0x030813, 18, 45);
     const camera=new THREE.PerspectiveCamera(60, width/height, 0.1, 1000);
-    camera.position.set(12, 10, 15);
+    camera.position.set(10, 10, 15);
     camera.lookAt(0, 0, 0);
     const renderer=new THREE.WebGLRenderer({ antialias:true, alpha:true, powerPreference:'high-performance' });
     renderer.setPixelRatio(Math.min((window.devicePixelRatio || 1) * 2, 3));
     renderer.setSize(width, height);
+    renderer.setClearColor(0x030813, 1);
     if('outputColorSpace' in renderer && THREE.SRGBColorSpace){
       renderer.outputColorSpace = THREE.SRGBColorSpace;
     } else if('outputEncoding' in renderer && THREE.sRGBEncoding){
@@ -5267,48 +5415,56 @@ function init3DTwin() {
     mount.innerHTML='';
     mount.appendChild(renderer.domElement);
     ensureTwinLegend();
-    const ambient=new THREE.AmbientLight(0x6a88ff, 1.25);
-    const directional=new THREE.PointLight(0xffffff, 1.4);
-    directional.position.set(10, 10, 10);
-    const rim=new THREE.DirectionalLight(0x00f5ff, 0.65);
-    rim.position.set(-8, 6, -8);
-    scene.add(ambient, directional, rim);
+    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+    const directional = new THREE.DirectionalLight(0xffffff, 1);
+    directional.position.set(5, 10, 7);
+    const point = new THREE.PointLight(0x00ffff, 1.5, 50);
+    point.position.set(0, 10, 0);
+    scene.add(ambient, directional, point);
     const substrate=new THREE.Mesh(
-      new THREE.PlaneGeometry(14,14),
-      new THREE.MeshStandardMaterial({ color:0x0a1a2f, roughness:0.34, metalness:0.42, side:THREE.DoubleSide })
+      new THREE.PlaneGeometry(18,18),
+      new THREE.MeshStandardMaterial({ color:0x09121f, roughness:0.34, metalness:0.42, emissive:0x09121f, emissiveIntensity:0.18, side:THREE.DoubleSide })
     );
     substrate.rotation.x = -Math.PI/2;
     substrate.position.y = 0;
     scene.add(substrate);
-    const grid=new THREE.GridHelper(14, 28, 0x224b88, 0x16335d);
+    const grid=new THREE.GridHelper(18, 36, 0x224b88, 0x16335d);
     grid.position.y=0.02;
     scene.add(grid);
     const cubes=createFloorplan(scene);
     const routes=drawRouting(scene);
     const detailGroup=buildTransistorDetail(scene);
-    const Controls = window.OrbitControls || window.THREE.OrbitControls;
-    const controls = Controls ? new Controls(camera, renderer.domElement) : null;
+    installOrbitControlsFallback(THREE);
+    const controls = THREE.OrbitControls ? new THREE.OrbitControls(camera, renderer.domElement) : null;
     if(controls){
+      controls.target.set(0, 0, 0);
       controls.enableDamping = true;
-      controls.dampingFactor = 0.05;
-      controls.enablePan = true;
+      controls.dampingFactor = 0.06;
       controls.enableZoom = true;
+      controls.enablePan = true;
+      controls.enableRotate = true;
+      controls.minDistance = 2;
+      controls.maxDistance = 50;
       controls.zoomSpeed = 1.2;
-      controls.minDistance = 0.0001;
-      controls.maxDistance = 200;
+      controls.panSpeed = 0.8;
+      controls.rotateSpeed = 0.6;
       controls.maxPolarAngle = Math.PI/2.05;
+      controls.update();
     }
-    camera.position.set(12,10,15);
+    renderer.domElement.style.cursor = 'grab';
+    camera.position.set(10,10,15);
     camera.lookAt(0,0,0);
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     renderer.domElement.addEventListener('click', onChipClick);
+    renderer.domElement.addEventListener('pointermove', onChipPointerMove);
+    renderer.domElement.addEventListener('pointerleave', onChipPointerLeave);
     const timingGeometry = new THREE.SphereGeometry(0.16, 20, 20);
     const timingMaterial = new THREE.MeshStandardMaterial({ color:0x00ff66, emissive:0x00ff66, emissiveIntensity:1.2 });
     const timingNode = new THREE.Mesh(timingGeometry, timingMaterial);
     timingNode.position.set(-8, 0.8, -8);
     scene.add(timingNode);
-    S.threeTwin={...S.threeTwin, scene, camera, renderer, controls, blocks:cubes, cubes, routes, detailGroup, raycaster, pointer, timingNode, ready:true, mount, autoRotate:true};
+    S.threeTwin={...S.threeTwin, scene, camera, renderer, controls, blocks:cubes, cubes, routes, detailGroup, raycaster, pointer, timingNode, ready:true, mount, autoRotate:false, hoveredIdx:null};
     const onResize=()=>{
       const target=document.getElementById('full3d');
       if(!target || !S.threeTwin?.renderer) return;
@@ -5317,6 +5473,7 @@ function init3DTwin() {
       S.threeTwin.renderer.setSize(w, h);
       S.threeTwin.camera.aspect=w/h;
       S.threeTwin.camera.updateProjectionMatrix();
+      S.threeTwin.camera.position.set(10,10,15);
       S.threeTwin.camera.lookAt(0,0,0);
     };
     if(!S.threeTwin._resizeBound){
@@ -5325,12 +5482,8 @@ function init3DTwin() {
     }
     const animate=()=>{
       if(!S.threeTwin?.ready) return;
+      S.threeTwin.raf = requestAnimationFrame(animate);
       S.threeTwin.heatPhase += 0.015;
-      if(S.threeTwin.autoRotate){
-        const root = S.threeTwin.blockMesh;
-        if(root) root.rotation.y += 0.0015;
-        (S.threeTwin.routes || []).forEach(route=>{ route.rotation.y += 0.0015; });
-      }
       if(S.threeTwin.timeline && S.threeTwin.timeline.length){
         const frame=S.threeTwin.timeline[S.threeTwin.timelineIndex % S.threeTwin.timeline.length];
         applyTwinFrameTo3D(frame);
@@ -5347,7 +5500,6 @@ function init3DTwin() {
       applyBlockInstances(S.threeTwin.heatPhase);
       S.threeTwin.controls?.update?.();
       S.threeTwin.renderer.render(S.threeTwin.scene, S.threeTwin.camera);
-      S.threeTwin.raf=requestAnimationFrame(animate);
     };
     updateFloorplan(computeCore());
     applyThermalMap();

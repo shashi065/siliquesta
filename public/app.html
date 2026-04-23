@@ -4712,36 +4712,60 @@ function initSidebarTwin(){
     if(!window.THREE || S.sidebarTwin?.ready) return;
     const THREE = window.THREE;
     const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x020617);
     const w = Math.max(container.clientWidth, 160);
     const h = Math.max(container.clientHeight, 120);
     const camera = new THREE.PerspectiveCamera(45, w / Math.max(h,1), 0.1, 100);
-    camera.position.set(5, 5, 8);
+    camera.position.set(0, 18, 22);
     camera.lookAt(0,0,0);
     const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(w, h);
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
-    const light = new THREE.AmbientLight(0xffffff, 0.8);
-    const dir = new THREE.DirectionalLight(0x00f5ff, 0.7);
-    dir.position.set(4,8,6);
-    scene.add(light, dir);
-    const substrate = new THREE.Mesh(
-      new THREE.BoxGeometry(4.4, 0.18, 4.4),
-      new THREE.MeshStandardMaterial({ color:0x0a1a2f, roughness:0.45, metalness:0.35 })
-    );
-    substrate.position.y = -0.32;
-    scene.add(substrate);
+    installOrbitControlsFallback(THREE);
+    const controls = THREE.OrbitControls ? new THREE.OrbitControls(camera, renderer.domElement) : null;
+    if(controls){
+      controls.enableRotate = false;
+      controls.enablePan = false;
+      controls.enableZoom = true;
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.minDistance = 8;
+      controls.maxDistance = 60;
+      controls.target.set(0, 0, 0);
+      controls.update();
+    }
+    scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+    scene.add(new THREE.GridHelper(30, 30, 0x00ffff, 0x003344));
     const meshes = [];
-    for(let i=0;i<25;i++){
-      const box = new THREE.Mesh(
-        new THREE.BoxGeometry(0.5, 0.5, 0.5),
-        new THREE.MeshStandardMaterial({ color:0x00ffcc, emissive:0x062122, emissiveIntensity:0.2 })
-      );
-      box.position.set((i % 5) - 2, 0, Math.floor(i / 5) - 2);
-      box.userData = { id:i };
-      scene.add(box);
-      meshes.push(box);
+    const miniGrid = 14;
+    for(let i=0;i<miniGrid;i++){
+      for(let j=0;j<miniGrid;j++){
+        const x = i - miniGrid / 2;
+        const y = j - miniGrid / 2;
+        const seed = seededUnit(stableHash(['sidebar-layout', String(i), String(j)]), i * miniGrid + j + 1);
+        if(seed > 0.72){
+          const mesh = createLayoutRect(x, y, 0.9, 0.18, 'metal1', 0.1);
+          scene.add(mesh);
+          meshes.push(mesh);
+        }
+        if(seed > 0.84){
+          const mesh = createLayoutRect(x, y, 0.18, 0.9, 'metal2', 0.2);
+          scene.add(mesh);
+          meshes.push(mesh);
+        }
+        if(seed > 0.9){
+          const mesh = createLayoutRect(x, y, 0.28, 0.28, 'poly', 0.05);
+          scene.add(mesh);
+          meshes.push(mesh);
+        }
+        if(seed > 0.8){
+          const mesh = createLayoutRect(x, y, 0.65, 0.65, 'diff', 0.01);
+          scene.add(mesh);
+          meshes.push(mesh);
+        }
+      }
     }
     const resize = ()=>{
       const width = Math.max(container.clientWidth, 160);
@@ -4753,14 +4777,11 @@ function initSidebarTwin(){
     if(!S.sidebarTwin?.resizeBound){
       window.addEventListener('resize', resize);
     }
-    S.sidebarTwin = { scene, camera, renderer, meshes, resize, ready:true, resizeBound:true };
+    S.sidebarTwin = { scene, camera, renderer, controls, meshes, resize, ready:true, resizeBound:true };
     const animate = ()=>{
       if(!S.sidebarTwin?.ready) return;
       requestAnimationFrame(animate);
-      S.sidebarTwin.meshes.forEach((mesh, idx)=>{
-        mesh.rotation.y += 0.005;
-        mesh.rotation.x = Math.sin((performance.now() * 0.0012) + idx * 0.2) * 0.08;
-      });
+      S.sidebarTwin.controls?.update?.();
       renderer.render(scene, camera);
     };
     animate();
@@ -4772,15 +4793,10 @@ function updateSidebarTwin(result){
   const twin = S.sidebarTwin;
   if(!twin?.meshes?.length) return;
   const data = normalizeRunMetrics(result || computeCore());
+  const focusCount = Math.max(1, Math.min(12, Math.round(Number(data.power || 0))));
   twin.meshes.forEach((mesh, idx)=>{
-    if (data.power < 5) mesh.material.color.set(0x00ffcc);
-    else if (data.power < 15) mesh.material.color.set(0xffff00);
-    else mesh.material.color.set(0xff3300);
-    mesh.material.emissive.set(data.power < 5 ? 0x063233 : data.power < 15 ? 0x444000 : 0x441106);
-    mesh.material.emissiveIntensity = 0.18 + Math.min(data.power / 20, 0.7);
-    mesh.scale.y = 1 + data.delay * 0.01;
-    mesh.position.y = (mesh.scale.y - 1) * 0.22;
-    mesh.rotation.z = Math.sin((idx + 1) * 0.3 + data.freq * 0.02) * 0.06;
+    mesh.material.color.setHex(GDS_LAYERS[mesh.userData.layer] || 0x00ffff);
+    mesh.material.opacity = idx < focusCount ? 1 : 0.82;
   });
 }
 
@@ -5052,56 +5068,82 @@ function destroy3DTwin(){
   S.threeTwin = { ready:false, raf:0, blocks:[], timeline:[], timelineIndex:0, pendingResult:null };
 }
 
-function chipPowerToColor(power){
-  if (power < 0.25) return 0x00ffff;
-  if (power < 0.5) return 0x00ff00;
-  if (power < 0.75) return 0xffff00;
-  return 0xff0000;
+const GDS_LAYERS = {
+  metal1: 0x00ffff,
+  metal2: 0xff00ff,
+  poly: 0xffff00,
+  diff: 0x00ff00
+};
+
+function createLayoutRect(x, y, w, h, layer, z){
+  const THREE = window.THREE;
+  const geometry = new THREE.PlaneGeometry(w, h);
+  const material = new THREE.MeshBasicMaterial({
+    color: GDS_LAYERS[layer],
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.9
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set(x, z, y);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.userData.layer = layer;
+  return mesh;
 }
 
-function buildClean3DChipGrid(scene){
-  const THREE = window.THREE;
-  const size = 30;
-  const spacing = 0.6;
-  const geometry = new THREE.BoxGeometry(0.4, 0.4, 0.4);
-  const blocks = [];
-  for (let x = 0; x < size; x++) {
-    for (let z = 0; z < size; z++) {
-      const power = seededUnit(stableHash(['clean-chip', String(x), String(z)]), x * size + z + 1);
-      const material = new THREE.MeshStandardMaterial({
-        color: chipPowerToColor(power),
-        roughness: 0.4,
-        metalness: 0.2
-      });
-      const cube = new THREE.Mesh(geometry, material);
-      cube.position.set(
-        (x - size / 2) * spacing,
-        power * 2,
-        (z - size / 2) * spacing
-      );
-      cube.userData.basePower = power;
-      scene.add(cube);
-      blocks.push(cube);
+function buildGDSLayout(scene){
+  const meshes = [];
+  const gridSize = 40;
+  for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
+      const x = i - gridSize / 2;
+      const y = j - gridSize / 2;
+      const m1 = seededUnit(stableHash(['gds-m1', String(i), String(j)]), 1);
+      const m2 = seededUnit(stableHash(['gds-m2', String(i), String(j)]), 2);
+      const poly = seededUnit(stableHash(['gds-poly', String(i), String(j)]), 3);
+      const diff = seededUnit(stableHash(['gds-diff', String(i), String(j)]), 4);
+      if (m1 > 0.7) {
+        const mesh = createLayoutRect(x, y, 1, 0.2, 'metal1', 0.1);
+        scene.add(mesh);
+        meshes.push(mesh);
+      }
+      if (m2 > 0.8) {
+        const mesh = createLayoutRect(x, y, 0.2, 1, 'metal2', 0.2);
+        scene.add(mesh);
+        meshes.push(mesh);
+      }
+      if (poly > 0.9) {
+        const mesh = createLayoutRect(x, y, 0.3, 0.3, 'poly', 0.05);
+        scene.add(mesh);
+        meshes.push(mesh);
+      }
+      if (diff > 0.85) {
+        const mesh = createLayoutRect(x, y, 0.8, 0.8, 'diff', 0.01);
+        scene.add(mesh);
+        meshes.push(mesh);
+      }
     }
   }
-  return blocks;
+  return meshes;
+}
+
+function highlightNet(meshes) {
+  (meshes || []).forEach(mesh => {
+    mesh.material.color.set(0x00ffff);
+    mesh.material.opacity = 1;
+  });
 }
 
 function refresh3DTwinGrid(data){
-  if(!S.threeTwin?.blocks?.length) return;
+  if(!S.threeTwin?.layoutMeshes?.length) return;
   const result = normalizeRunMetrics(data || computeCore());
-  const influence = Math.max(0, Math.min(1, ((Number(result.power) || 0) + (Number(result.delay) || 0)) / 20));
-  S.threeTwin.blocks.forEach((cube, idx)=>{
-    const x = Math.floor(idx / 30);
-    const z = idx % 30;
-    const power = Math.max(0, Math.min(1, cube.userData.basePower * 0.7 + influence * 0.3));
-    cube.material.color.setHex(chipPowerToColor(power));
-    cube.position.set(
-      (x - 15) * 0.6,
-      power * 2,
-      (z - 15) * 0.6
-    );
+  SQ.lastResult = result;
+  const focusCount = Math.max(1, Math.min(24, Math.round(Number(result.power || 0))));
+  S.threeTwin.layoutMeshes.forEach(mesh => {
+    mesh.material.color.setHex(GDS_LAYERS[mesh.userData.layer] || 0x00ffff);
+    mesh.material.opacity = 0.9;
   });
+  highlightNet(S.threeTwin.layoutMeshes.slice(0, focusCount));
 }
 
 function ensureTwinLegend(){}
@@ -5118,8 +5160,8 @@ function animateRTLFlow(){}
 function init3DTwin() {
   const mount = getTwin3DMount();
   if(!mount) return;
-  if(!S.threeTwin) S.threeTwin = { ready:false, raf:0, blocks:[], timeline:[], timelineIndex:0, pendingResult:null };
-  if(S.threeTwin.ready && S.threeTwin.engine === 'clean-three-chip'){
+  if(!S.threeTwin) S.threeTwin = { ready:false, raf:0, layoutMeshes:[], timeline:[], timelineIndex:0, pendingResult:null };
+  if(S.threeTwin.ready && S.threeTwin.engine === 'gds-layout-chip'){
     return;
   }
   const pendingResult = S.threeTwin.pendingResult || lastResult || computeCore();
@@ -5133,12 +5175,12 @@ function init3DTwin() {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x020617);
     const camera = new THREE.PerspectiveCamera(
-      60,
+      45,
       window.innerWidth / Math.max(window.innerHeight, 1),
       0.1,
       1000
     );
-    camera.position.set(20, 20, 20);
+    camera.position.set(0, 30, 40);
     const renderer = new THREE.WebGLRenderer({
       antialias: true
     });
@@ -5148,20 +5190,20 @@ function init3DTwin() {
     mountNode.appendChild(renderer.domElement);
     const controls = THREE.OrbitControls ? new THREE.OrbitControls(camera, renderer.domElement) : null;
     if(controls){
+      controls.enableRotate = false;
+      controls.enablePan = true;
+      controls.enableZoom = true;
       controls.enableDamping = true;
       controls.dampingFactor = 0.05;
       controls.minDistance = 5;
-      controls.maxDistance = 100;
+      controls.maxDistance = 200;
       controls.target.set(0, 0, 0);
       controls.update();
     }
-    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    dirLight.position.set(10, 20, 10);
-    scene.add(dirLight);
-    const grid = new THREE.GridHelper(40, 40, 0x00ffff, 0x003344);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+    const grid = new THREE.GridHelper(100, 100, 0x00ffff, 0x003344);
     scene.add(grid);
-    const blocks = buildClean3DChipGrid(scene);
+    const layoutMeshes = buildGDSLayout(scene);
     const resizeHandler = ()=>{
       if(!S.threeTwin?.renderer || !S.threeTwin?.camera) return;
       S.threeTwin.camera.aspect = window.innerWidth / Math.max(window.innerHeight, 1);
@@ -5176,13 +5218,13 @@ function init3DTwin() {
       S.threeTwin.renderer.render(S.threeTwin.scene, S.threeTwin.camera);
     };
     S.threeTwin = {
-      engine:'clean-three-chip',
+      engine:'gds-layout-chip',
       ready:true,
       scene,
       camera,
       renderer,
       controls,
-      blocks,
+      layoutMeshes,
       timeline:[],
       timelineIndex:0,
       timelineTimer:null,
@@ -5202,7 +5244,7 @@ function applyTwinFrameTo3D(frame){
 function update3DTwin(data) {
   const result = normalizeRunMetrics(data || computeCore());
   if(!S.threeTwin || !S.threeTwin.ready){
-    if(!S.threeTwin) S.threeTwin = { ready:false, raf:0, blocks:[], timeline:[], timelineIndex:0, pendingResult:result };
+    if(!S.threeTwin) S.threeTwin = { ready:false, raf:0, layoutMeshes:[], timeline:[], timelineIndex:0, pendingResult:result };
     else S.threeTwin.pendingResult = result;
     init3DTwin();
     return;

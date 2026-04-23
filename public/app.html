@@ -1996,8 +1996,11 @@ body[data-theme="light"] #mat-select option {
 
       <div class="twin-visual-grid">
         <div class="gc gc-p twin-chip-shell">
-          <div class="sect-label" style="margin-bottom:12px">3D Chip Twin</div>
-          <div id="twin-chip-3d"></div>
+          <div class="sect-label" style="margin-bottom:12px">3D Twin Workspace</div>
+          <div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;color:var(--t2);gap:14px">
+            <div>Use the dedicated 3D Visualizer workspace for the full interactive chip twin.</div>
+            <button class="action-btn btn-run" style="width:auto;padding:10px 18px;margin:0" onclick="openTwinVisualizer()">Open Fullscreen 3D Twin</button>
+          </div>
         </div>
         <div class="gc gc-p">
           <div class="sect-label" style="margin-bottom:12px">Multi-Scale Twin View</div>
@@ -2529,6 +2532,11 @@ body[data-theme="light"] #mat-select option {
 </div>
 
 <div id="toast-wrap" aria-live="polite" aria-atomic="true"></div>
+
+<div id="tab-3d" class="tab-content" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:999;">
+  <button type="button" onclick="close3DTab()" style="position:absolute;top:18px;right:18px;z-index:1001;padding:10px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.16);background:rgba(12,18,34,.88);color:#fff;cursor:pointer">Close 3D</button>
+  <div id="full3d" style="width:100%;height:100%"></div>
+</div>
 
 <script>
 // ═══════════════════════════════════════════════════
@@ -4468,18 +4476,19 @@ async function runTwin() {
     let data = await safeFetch(`${API}/twin`, {
       method:"POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(lastResult || normalizeRunMetrics(S.results.slice(-1)[0] || cmos(S.wn,S.wp,S.vdd,S.temp,S.cl,S.corner,S.techNode)))
+      body: JSON.stringify(lastResult || computeCore())
     });
-    if (!data) {
+    if (!Array.isArray(data) || !data.length) {
       const base = computeCore();
       data = [];
       for (let t = 0; t < 10; t++) {
+        const life = t / 9;
         data.push({
           t,
           time: t,
-          freq: base.freq * (1 - t * 0.02),
-          power: base.power * (1 + t * 0.03),
-          delay: base.delay * (1 + t * 0.04)
+          freq: +(base.freq * (1 - life * 0.18)).toFixed(4),
+          power: +(base.power * (1 + life * 0.24)).toFixed(4),
+          delay: +(base.delay * (1 + life * life * 0.42)).toFixed(4)
         });
       }
     }
@@ -4490,12 +4499,13 @@ async function runTwin() {
     const base = computeCore();
     const data = [];
     for (let t = 0; t < 10; t++) {
+      const life = t / 9;
       data.push({
         t,
         time: t,
-        freq: base.freq * (1 - t * 0.02),
-        power: base.power * (1 + t * 0.03),
-        delay: base.delay * (1 + t * 0.04)
+        freq: +(base.freq * (1 - life * 0.18)).toFixed(4),
+        power: +(base.power * (1 + life * 0.24)).toFixed(4),
+        delay: +(base.delay * (1 + life * life * 0.42)).toFixed(4)
       });
     }
     renderTwinChart(data);
@@ -4677,14 +4687,6 @@ function toggleSidebarTwin(activePanel){
 }
 
 function ensureTwinSurfaces(){
-  const host3d=document.getElementById('twin-chip-3d');
-  if(host3d && (!document.getElementById('chip-3d') || !document.getElementById('chip-3d-fallback'))){
-    host3d.style.position='relative';
-    host3d.innerHTML =
-      '<canvas id="chip-3d-fallback" style="position:absolute;inset:0;width:100%;height:100%;display:block"></canvas>' +
-      '<div id="chip-3d" style="position:absolute;inset:0;min-height:320px;pointer-events:auto"></div>' +
-      '<button type="button" id="chip-3d-open" class="exp-btn" style="position:absolute;right:12px;bottom:12px;z-index:4;background:rgba(7,7,15,.88)" onclick="openTwinVisualizer()">Open Full Twin</button>';
-  }
   const circuit=document.getElementById('twin-circuit');
   if(circuit && !document.getElementById('chip-layout-2d')){
     const canvas=document.createElement('canvas');
@@ -4722,10 +4724,27 @@ function setVisualizerContext(mode){
   update3DPanelMeta();
 }
 
+function showTab(id){
+  document.querySelectorAll('.tab-content').forEach(tab=>{ tab.style.display='none'; });
+  if(id){
+    const target=document.getElementById(id);
+    if(target) target.style.display='block';
+  }
+}
+
+function close3DTab(){
+  showTab();
+  if(S.currentPanel === '3d'){
+    showPanel(S.lastPanelBefore3D || 'dashboard');
+  }
+}
+
 function openTwinVisualizer(){
   setVisualizerContext('twin');
-  showPanel('3d');
-  render3D();
+  S.lastPanelBefore3D = S.currentPanel && S.currentPanel !== '3d' ? S.currentPanel : (S.lastPanelBefore3D || 'twin');
+  showTab('tab-3d');
+  init3DTwin();
+  update3DTwin(lastResult || computeCore());
 }
 
 function renderTwinCanvas(host, canvas, data, opts={}){
@@ -4897,26 +4916,59 @@ function renderTwinVisualizerPanel(data){
 
 function createFloorplan(scene){
   const THREE = window.THREE;
+  const size = 80;
+  const spacing = 0.25;
+  const count = size * size;
+  const geometry = new THREE.BoxGeometry(0.2,1,0.2);
+  const material = new THREE.MeshStandardMaterial({
+    color:0x1e90ff,
+    emissive:0x06131f,
+    emissiveIntensity:0.22,
+    roughness:0.22,
+    metalness:0.62
+  });
+  material.vertexColors = true;
+  const mesh = new THREE.InstancedMesh(geometry, material, count);
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  if(mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  mesh.frustumCulled = true;
+  mesh.userData.kind = 'block-grid';
+  scene.add(mesh);
   const blocks = [];
-  for (let x=0; x<10; x++) {
-    for (let y=0; y<10; y++) {
-      const block = new THREE.Mesh(
-        new THREE.BoxGeometry(0.76, 0.22, 0.76),
-        new THREE.MeshStandardMaterial({
-          color: 0x1e90ff,
-          emissive: 0x081018,
-          emissiveIntensity: 0.18,
-          roughness: 0.28,
-          metalness: 0.56
-        })
-      );
-      block.position.set(x-4.5, 0.11, y-4.5);
-      block.userData.baseY = 0.11;
-      block.userData.kind = 'block';
-      scene.add(block);
-      blocks.push(block);
+  const dummy = new THREE.Object3D();
+  let idx = 0;
+  for (let x=0; x<size; x++) {
+    for (let y=0; y<size; y++) {
+      const px = (x - size / 2) * spacing;
+      const pz = (y - size / 2) * spacing;
+      const net = `N${x % 8}-${y % 8}`;
+      const meta = {
+        idx,
+        x:px,
+        z:pz,
+        height:0.8,
+        power:0.1,
+        delay:0.1,
+        freq:0.1,
+        net,
+        type:(x + y) % 5 === 0 ? 'critical' : 'cell',
+        selected:false,
+        violation:false,
+        path:false,
+        thermal:((x % 7) + (y % 5)) / 12
+      };
+      dummy.position.set(px, meta.height * 0.5, pz);
+      dummy.scale.set(1, meta.height, 1);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(idx, dummy.matrix);
+      mesh.setColorAt(idx, new THREE.Color(0x00ffcc));
+      blocks.push(meta);
+      idx++;
     }
   }
+  mesh.instanceMatrix.needsUpdate = true;
+  if(mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  S.threeTwin = { ...(S.threeTwin || {}), blockMesh:mesh };
   return blocks;
 }
 
@@ -4974,26 +5026,115 @@ function buildTransistorDetail(scene){
   return group;
 }
 
+function powerColor(powerRatio){
+  if(powerRatio < 0.3) return { color:[0.0, 0.95, 1.0], emissive:[0.0,0.35,0.45] };
+  if(powerRatio < 0.6) return { color:[1.0, 0.86, 0.18], emissive:[0.38,0.28,0.02] };
+  if(powerRatio < 0.8) return { color:[1.0, 0.58, 0.0], emissive:[0.48,0.18,0.0] };
+  return { color:[1.0, 0.18, 0.12], emissive:[0.55,0.08,0.06] };
+}
+
+function applyBlockInstances(time = 0){
+  if(!S.threeTwin?.blockMesh || !Array.isArray(S.threeTwin?.blocks)) return;
+  const THREE = window.THREE;
+  const mesh = S.threeTwin.blockMesh;
+  const dummy = S.threeTwin.instanceDummy || new THREE.Object3D();
+  S.threeTwin.instanceDummy = dummy;
+  const pulse = 0.5 + Math.sin(time * 3.2) * 0.5;
+  S.threeTwin.blocks.forEach((meta, idx)=>{
+    const powerRatio = Math.max(0, Math.min(1, Number(meta.power) || 0));
+    const delayRatio = Math.max(0, Math.min(1, Number(meta.delay) || 0));
+    const freqRatio = Math.max(0, Math.min(1, Number(meta.freq) || 0));
+    const thermal = Math.max(0, Math.min(1, (meta.thermal ?? powerRatio)));
+    const mapped = powerColor((powerRatio * 0.7) + thermal * 0.3);
+    const color = new THREE.Color(...mapped.color);
+    if(meta.violation) color.setRGB(1,0.1,0.1);
+    if(meta.path) color.lerp(new THREE.Color(0x00ff66), 0.35 + pulse * 0.25);
+    if(meta.selected) color.lerp(new THREE.Color(0x00ffff), 0.45 + pulse * 0.3);
+    mesh.setColorAt(idx, color);
+    const height = Math.max(0.16, 0.2 + powerRatio * 1.2 + freqRatio * 0.85);
+    meta.height = height;
+    dummy.position.set(meta.x, height * 0.5, meta.z);
+    dummy.scale.set(1, height, 1);
+    dummy.updateMatrix();
+    mesh.setMatrixAt(idx, dummy.matrix);
+  });
+  mesh.instanceMatrix.needsUpdate = true;
+  if(mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  if(mesh.material){
+    mesh.material.emissive = new THREE.Color(0x081018);
+    mesh.material.emissiveIntensity = 0.32 + pulse * 0.08;
+  }
+}
+
+function ensureTwinLegend(){
+  const mount = document.getElementById('full3d');
+  if(!mount || document.getElementById('full3d-legend')) return;
+  const legend = document.createElement('div');
+  legend.id = 'full3d-legend';
+  legend.style.cssText = 'position:absolute;left:18px;bottom:18px;z-index:1000;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(8,12,22,.72);backdrop-filter:blur(10px);color:#fff;font:12px DM Mono, monospace;line-height:1.8;';
+  legend.innerHTML = [
+    '<div><span style="color:#27d8ff">●</span> Cool (low power)</div>',
+    '<div><span style="color:#60ff92">●</span> Active</div>',
+    '<div><span style="color:#ffd94a">●</span> Critical</div>',
+    '<div><span style="color:#ff4b3a">●</span> Hot (failure risk)</div>'
+  ].join('');
+  mount.appendChild(legend);
+}
+
+function updateSpatialAudio(result){
+  const audioCtx = window.AudioContext ? (S.threeTwin.audioCtx || new window.AudioContext()) : null;
+  if(!audioCtx) return;
+  if(audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
+  S.threeTwin.audioCtx = audioCtx;
+  if(!S.threeTwin.audioOsc){
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const pan = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null;
+    osc.type = 'sine';
+    gain.gain.value = 0.0001;
+    osc.connect(gain);
+    if(pan){
+      gain.connect(pan);
+      pan.connect(audioCtx.destination);
+      S.threeTwin.audioPan = pan;
+    } else {
+      gain.connect(audioCtx.destination);
+    }
+    osc.start();
+    S.threeTwin.audioOsc = osc;
+    S.threeTwin.audioGain = gain;
+  }
+  const power = Math.max(0, Number(result.power) || 0);
+  const delay = Math.max(0, Number(result.delay) || 0);
+  const currentTime = audioCtx.currentTime;
+  S.threeTwin.audioOsc.frequency.setTargetAtTime(140 + power * 180 + delay * 12, currentTime, 0.08);
+  S.threeTwin.audioGain.gain.setTargetAtTime(Math.min(0.03, 0.004 + power * 0.0025), currentTime, 0.1);
+  if(S.threeTwin.audioPan){
+    const zoom = S.threeTwin.camera ? Math.max(-1, Math.min(1, (10 - S.threeTwin.camera.position.z) / 10)) : 0;
+    S.threeTwin.audioPan.pan.setTargetAtTime(zoom, currentTime, 0.12);
+  }
+}
+
 function showTransistorLevel() {
   if(!S.threeTwin?.detailGroup) return;
   S.threeTwin.detailGroup.visible = true;
-  (S.threeTwin.blocks||[]).forEach(block=>block.visible = false);
+  if(S.threeTwin.blockMesh) S.threeTwin.blockMesh.count = Math.min(600, S.threeTwin.blocks.length);
 }
 
 function showGateLevel() {
   if(!S.threeTwin?.detailGroup) return;
   S.threeTwin.detailGroup.visible = false;
-  (S.threeTwin.blocks||[]).forEach((block, idx)=>block.visible = idx % 2 === 0);
+  if(S.threeTwin.blockMesh) S.threeTwin.blockMesh.count = Math.min(2200, S.threeTwin.blocks.length);
 }
 
 function showBlockLevel() {
   if(!S.threeTwin?.detailGroup) return;
   S.threeTwin.detailGroup.visible = false;
-  (S.threeTwin.blocks||[]).forEach(block=>block.visible = true);
+  if(S.threeTwin.blockMesh) S.threeTwin.blockMesh.count = S.threeTwin.blocks.length;
 }
 
 function updateLOD(cameraZoom) {
-  if (cameraZoom < 5) {
+  if (cameraZoom < 2) {
     showTransistorLevel();
   } else if (cameraZoom < 10) {
     showGateLevel();
@@ -5005,20 +5146,22 @@ function updateLOD(cameraZoom) {
 function updateFloorplan(data) {
   if(!S.threeTwin?.blocks?.length) return;
   const result = normalizeRunMetrics(data || computeCore());
-  const blocks = S.threeTwin.blocks;
-  const samples = gpuSimulate(blocks.length);
-  const maxPower = Math.max(...samples.map(s=>s.power), result.power, 0.001);
-  const maxFreq = Math.max(...samples.map(s=>s.freq), result.freq, 0.001);
-  blocks.forEach((b, i) => {
-    const sample = samples[i];
-    const intensity = Math.min(sample.power / maxPower, 1);
-    const freqRatio = Math.min(sample.freq / maxFreq, 1);
-    b.material.color.setRGB(intensity, 0.2 + freqRatio * 0.35, 1 - intensity * 0.7);
-    b.material.emissive.setRGB(intensity * 0.8, 0.08, 0.35 * (1-intensity));
-    b.material.emissiveIntensity = 0.2 + intensity * 0.7;
-    b.scale.y = 1 + freqRatio * 5.6;
-    b.position.y = (b.userData.baseY || 0.11) + (b.scale.y - 1) * 0.1;
+  const maxPower = Math.max(result.power, 0.001);
+  const maxFreq = Math.max(result.freq, 0.001);
+  const maxDelay = Math.max(result.delay, 0.001);
+  S.threeTwin.blocks.forEach((meta, i) => {
+    const waveA = Math.sin((meta.x + 10.5) * 0.38 + result.freq * 0.9 + i * 0.0006);
+    const waveB = Math.cos((meta.z + 10.5) * 0.41 + result.power * 0.13);
+    const activity = Math.max(0, Math.min(1, (waveA + waveB + 2) / 4));
+    meta.power = Math.max(0, Math.min(1, (result.power / maxPower) * (0.35 + activity * 0.75)));
+    meta.freq = Math.max(0, Math.min(1, (result.freq / maxFreq) * (0.45 + activity * 0.55)));
+    meta.delay = Math.max(0, Math.min(1, (result.delay / maxDelay) * (0.55 + (1 - activity) * 0.45)));
+    meta.thermal = Math.max(0, Math.min(1, meta.power * 0.8 + meta.delay * 0.2));
+    meta.path = i % 97 === 0 || (Math.abs(meta.x - meta.z) < 0.12 && i % 13 === 0);
+    meta.violation = meta.power > 0.88 && meta.delay > 0.78;
+    meta.selected = S.threeTwin.selectedNet ? meta.net === S.threeTwin.selectedNet : false;
   });
+  applyBlockInstances(S.threeTwin.heatPhase || 0);
 }
 
 function onChipClick(event) {
@@ -5027,11 +5170,15 @@ function onChipClick(event) {
   S.threeTwin.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
   S.threeTwin.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
   S.threeTwin.raycaster.setFromCamera(S.threeTwin.pointer, S.threeTwin.camera);
-  const targets = [...(S.threeTwin.blocks || []), ...(S.threeTwin.detailGroup?.children || [])];
+  const targets = [S.threeTwin.blockMesh, ...(S.threeTwin.detailGroup?.children || [])].filter(Boolean);
   const intersects = S.threeTwin.raycaster.intersectObjects(targets, false);
   if (intersects.length > 0) {
     const obj = intersects[0].object;
-    if(obj.material?.emissive){
+    if(typeof intersects[0].instanceId === 'number' && S.threeTwin.blocks?.[intersects[0].instanceId]){
+      S.threeTwin.selectedNet = S.threeTwin.blocks[intersects[0].instanceId].net;
+      S.threeTwin.blocks.forEach(meta=>{ meta.selected = meta.net === S.threeTwin.selectedNet; });
+      applyBlockInstances(S.threeTwin.heatPhase || 0);
+    } else if(obj.material?.emissive){
       obj.material.emissive.set(0x00ffff);
       obj.material.emissiveIntensity = 0.95;
     }
@@ -5039,30 +5186,24 @@ function onChipClick(event) {
 }
 
 function runDRC() {
-  (S.threeTwin?.blocks || []).forEach(b => {
-    if (Math.random() < 0.05) {
-      b.material.color.set(0xff0000);
-      b.material.emissive.set(0x5a0000);
-      b.material.emissiveIntensity = 0.8;
-    }
+  (S.threeTwin?.blocks || []).forEach((meta, idx) => {
+    meta.violation = meta.violation || (idx % 173 === 0 && meta.power > 0.72);
   });
+  applyBlockInstances(S.threeTwin?.heatPhase || 0);
 }
 
 function highlightPath() {
-  const path = (S.threeTwin?.blocks || []).slice(0,10);
-  path.forEach(b => {
-    if(b.material?.emissive){
-      b.material.emissive.set(0xffff00);
-      b.material.emissiveIntensity = 0.85;
-    }
+  (S.threeTwin?.blocks || []).forEach((meta, idx) => {
+    meta.path = meta.path || (idx % 257 === 0);
   });
+  applyBlockInstances(S.threeTwin?.heatPhase || 0);
 }
 
 function applyThermalMap() {
-  (S.threeTwin?.blocks || []).forEach((b, idx) => {
-    const heat = seededUnit(stableHash(['thermal', String(idx), String(S.vdd), String(S.temp)]), idx + 7);
-    b.material.color.setRGB(heat, 0.08 + (1-heat)*0.22, 1-heat);
+  (S.threeTwin?.blocks || []).forEach((meta, idx) => {
+    meta.thermal = seededUnit(stableHash(['thermal', String(idx), String(S.vdd), String(S.temp)]), idx + 7);
   });
+  applyBlockInstances(S.threeTwin?.heatPhase || 0);
 }
 
 function animateRTLFlow() {
@@ -5082,54 +5223,64 @@ function animateRTLFlow() {
 }
 
 function init3DTwin() {
-  ensureTwinSurfaces();
-  const mount = document.getElementById('chip-3d');
+  const mount = document.getElementById('full3d');
   if(!mount) return;
   if(!S.threeTwin){
     S.threeTwin={ ready:false, cubes:[], raf:0, heatPhase:0, timeline:null, timelineIndex:0 };
   }
   if(S.threeTwin.ready){
-    const fallback=document.getElementById('chip-3d-fallback');
-    if(fallback) fallback.style.display='block';
-    mount.style.display='block';
     if(S.threeTwin.renderer && mount.firstChild !== S.threeTwin.renderer.domElement){
       mount.innerHTML='';
       mount.appendChild(S.threeTwin.renderer.domElement);
     }
+    ensureTwinLegend();
+    const w=Math.max(mount.clientWidth || window.innerWidth, 640);
+    const h=Math.max(mount.clientHeight || window.innerHeight, 420);
+    S.threeTwin.renderer.setSize(w, h);
+    S.threeTwin.camera.aspect=w/h;
+    S.threeTwin.camera.updateProjectionMatrix();
+    S.threeTwin.camera.position.set(12,10,15);
+    S.threeTwin.camera.lookAt(0,0,0);
     return;
   }
   loadThree(()=>{
     if(!window.THREE || S.threeTwin.ready) return;
     const THREE=window.THREE;
-    const width=Math.max(mount.clientWidth, 320);
-    const height=Math.max(mount.clientHeight, 260);
+    const width=Math.max(mount.clientWidth || window.innerWidth, 640);
+    const height=Math.max(mount.clientHeight || window.innerHeight, 420);
     const scene=new THREE.Scene();
-    scene.background = null;
-    const camera=new THREE.PerspectiveCamera(58, width/height, 0.1, 1000);
-    camera.position.set(0, 10, 12);
+    scene.background = new THREE.Color(0x000000);
+    const camera=new THREE.PerspectiveCamera(60, width/height, 0.1, 1000);
+    camera.position.set(12, 10, 15);
     camera.lookAt(0, 0, 0);
-    const renderer=new THREE.WebGLRenderer({ antialias:true, alpha:true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    const renderer=new THREE.WebGLRenderer({ antialias:true, alpha:true, powerPreference:'high-performance' });
+    renderer.setPixelRatio(Math.min((window.devicePixelRatio || 1) * 2, 3));
     renderer.setSize(width, height);
+    if('outputColorSpace' in renderer && THREE.SRGBColorSpace){
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+    } else if('outputEncoding' in renderer && THREE.sRGBEncoding){
+      renderer.outputEncoding = THREE.sRGBEncoding;
+    }
+    renderer.physicallyCorrectLights = true;
+    if(THREE.ACESFilmicToneMapping) renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
     mount.innerHTML='';
-    mount.style.display='block';
     mount.appendChild(renderer.domElement);
-    const fallback=document.getElementById('chip-3d-fallback');
-    if(fallback) fallback.style.display='block';
+    ensureTwinLegend();
     const ambient=new THREE.AmbientLight(0x6a88ff, 1.25);
-    const directional=new THREE.DirectionalLight(0xffffff, 1.7);
-    directional.position.set(8, 12, 10);
-    const rim=new THREE.DirectionalLight(0x00f5ff, 0.95);
-    rim.position.set(-7, 5, -6);
+    const directional=new THREE.PointLight(0xffffff, 1.4);
+    directional.position.set(10, 10, 10);
+    const rim=new THREE.DirectionalLight(0x00f5ff, 0.65);
+    rim.position.set(-8, 6, -8);
     scene.add(ambient, directional, rim);
     const substrate=new THREE.Mesh(
-      new THREE.PlaneGeometry(10,10),
+      new THREE.PlaneGeometry(14,14),
       new THREE.MeshStandardMaterial({ color:0x0a1a2f, roughness:0.34, metalness:0.42, side:THREE.DoubleSide })
     );
     substrate.rotation.x = -Math.PI/2;
     substrate.position.y = 0;
     scene.add(substrate);
-    const grid=new THREE.GridHelper(10, 20, 0x224b88, 0x16335d);
+    const grid=new THREE.GridHelper(14, 28, 0x224b88, 0x16335d);
     grid.position.y=0.02;
     scene.add(grid);
     const cubes=createFloorplan(scene);
@@ -5139,25 +5290,30 @@ function init3DTwin() {
     const controls = Controls ? new Controls(camera, renderer.domElement) : null;
     if(controls){
       controls.enableDamping = true;
-      controls.dampingFactor = 0.06;
+      controls.dampingFactor = 0.05;
       controls.enablePan = true;
       controls.enableZoom = true;
       controls.zoomSpeed = 1.2;
-      controls.minDistance = 6;
-      controls.maxDistance = 20;
+      controls.minDistance = 0.0001;
+      controls.maxDistance = 200;
       controls.maxPolarAngle = Math.PI/2.05;
     }
-    camera.position.set(0,10,12);
+    camera.position.set(12,10,15);
     camera.lookAt(0,0,0);
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     renderer.domElement.addEventListener('click', onChipClick);
-    S.threeTwin={...S.threeTwin, scene, camera, renderer, controls, blocks:cubes, cubes, routes, detailGroup, raycaster, pointer, ready:true, mount};
+    const timingGeometry = new THREE.SphereGeometry(0.16, 20, 20);
+    const timingMaterial = new THREE.MeshStandardMaterial({ color:0x00ff66, emissive:0x00ff66, emissiveIntensity:1.2 });
+    const timingNode = new THREE.Mesh(timingGeometry, timingMaterial);
+    timingNode.position.set(-8, 0.8, -8);
+    scene.add(timingNode);
+    S.threeTwin={...S.threeTwin, scene, camera, renderer, controls, blocks:cubes, cubes, routes, detailGroup, raycaster, pointer, timingNode, ready:true, mount, autoRotate:true};
     const onResize=()=>{
-      const target=document.getElementById('chip-3d');
+      const target=document.getElementById('full3d');
       if(!target || !S.threeTwin?.renderer) return;
-      const w=Math.max(target.clientWidth, 320);
-      const h=Math.max(target.clientHeight, 260);
+      const w=Math.max(target.clientWidth || window.innerWidth, 640);
+      const h=Math.max(target.clientHeight || window.innerHeight, 420);
       S.threeTwin.renderer.setSize(w, h);
       S.threeTwin.camera.aspect=w/h;
       S.threeTwin.camera.updateProjectionMatrix();
@@ -5170,14 +5326,25 @@ function init3DTwin() {
     const animate=()=>{
       if(!S.threeTwin?.ready) return;
       S.threeTwin.heatPhase += 0.015;
+      if(S.threeTwin.autoRotate){
+        const root = S.threeTwin.blockMesh;
+        if(root) root.rotation.y += 0.0015;
+        (S.threeTwin.routes || []).forEach(route=>{ route.rotation.y += 0.0015; });
+      }
       if(S.threeTwin.timeline && S.threeTwin.timeline.length){
         const frame=S.threeTwin.timeline[S.threeTwin.timelineIndex % S.threeTwin.timeline.length];
         applyTwinFrameTo3D(frame);
       }
       updateLOD(S.threeTwin.camera.position.distanceTo(new THREE.Vector3(0,0,0)));
-      S.threeTwin.blocks.forEach((cube, idx)=>{
-        cube.rotation.y = Math.sin(S.threeTwin.heatPhase + idx * 0.015) * 0.04;
-      });
+      if(S.threeTwin.timingNode){
+        const t = S.threeTwin.heatPhase * (0.6 + ((lastResult?.freq || 1) / 5));
+        S.threeTwin.timingNode.position.set(Math.sin(t) * 7.2, 0.8 + Math.abs(Math.sin(t * 0.7)) * 0.6, Math.cos(t) * 7.2);
+        const delay = lastResult?.delay || 0;
+        const violation = delay > 12;
+        S.threeTwin.timingNode.material.color.set(violation ? 0xff3b30 : 0x00ff66);
+        S.threeTwin.timingNode.material.emissive.set(violation ? 0xff3b30 : 0x00ff66);
+      }
+      applyBlockInstances(S.threeTwin.heatPhase);
       S.threeTwin.controls?.update?.();
       S.threeTwin.renderer.render(S.threeTwin.scene, S.threeTwin.camera);
       S.threeTwin.raf=requestAnimationFrame(animate);
@@ -5185,60 +5352,38 @@ function init3DTwin() {
     updateFloorplan(computeCore());
     applyThermalMap();
     highlightPath();
-    animateRTLFlow();
+    updateSpatialAudio(lastResult || computeCore());
     if(!S.threeTwin.raf) animate();
   });
 }
 
 function applyTwinFrameTo3D(frame){
-  if(!S.threeTwin?.cubes?.length) return;
-  const samples=gpuSimulate(S.threeTwin.cubes.length).map((sample, index)=>{
-    const freqScale = frame?.freq ? Number(frame.freq) / Math.max((lastResult || normalizeRunMetrics(computeCore())).freq, 0.001) : 1;
-    const powerScale = frame?.power ? Number(frame.power) / Math.max((lastResult || normalizeRunMetrics(computeCore())).power, 0.001) : 1;
-    const delayScale = frame?.delay ? Number(frame.delay) / Math.max((lastResult || normalizeRunMetrics(computeCore())).delay, 0.001) : 1;
-    return {
-      ...sample,
-      freq: sample.freq * freqScale,
-      power: sample.power * powerScale,
-      delay: sample.delay * delayScale,
-      idx:index
-    };
+  if(!S.threeTwin?.blocks?.length) return;
+  const base = normalizeRunMetrics(lastResult || computeCore());
+  const freqScale = frame?.freq ? Number(frame.freq) / Math.max(base.freq, 0.001) : 1;
+  const powerScale = frame?.power ? Number(frame.power) / Math.max(base.power, 0.001) : 1;
+  const delayScale = frame?.delay ? Number(frame.delay) / Math.max(base.delay, 0.001) : 1;
+  S.threeTwin.blocks.forEach((meta, idx)=>{
+    const seeded = seededUnit(stableHash(['twin-frame', String(idx), String(frame?.time ?? idx)]), idx + 17);
+    meta.freq = Math.max(0, Math.min(1, (0.32 + seeded * 0.68) * freqScale));
+    meta.power = Math.max(0, Math.min(1, (0.28 + seeded * 0.72) * powerScale));
+    meta.delay = Math.max(0, Math.min(1, (0.26 + (1 - seeded) * 0.74) * delayScale));
+    meta.thermal = Math.max(0, Math.min(1, meta.power * 0.85 + meta.delay * 0.15));
   });
-  const maxPower=Math.max(...samples.map(s=>s.power), 0.001);
-  const maxDelay=Math.max(...samples.map(s=>s.delay), 0.001);
-  const maxFreq=Math.max(...samples.map(s=>s.freq), 0.001);
-  S.threeTwin.cubes.forEach((cube, idx)=>{
-    const sample=samples[idx];
-    const powerRatio=Math.min(1, sample.power/maxPower);
-    const delayRatio=Math.min(1, sample.delay/maxDelay);
-    const freqRatio=Math.min(1, sample.freq/maxFreq);
-    cube.scale.y = 0.48 + freqRatio * 3.4;
-    cube.position.y = cube.scale.y * 0.22;
-    const color=new window.THREE.Color(powerRatio, 0.18 + freqRatio * 0.55, 0.25 + (1-delayRatio) * 0.7);
-    cube.material.color.copy(color);
-    cube.material.emissive.setRGB(powerRatio * 0.9, freqRatio * 0.15, delayRatio * 0.8);
-    cube.material.emissiveIntensity = 0.22 + powerRatio * 0.75;
-  });
+  applyBlockInstances(S.threeTwin.heatPhase || 0);
 }
 
 function update3DTwin(data) {
   const result=normalizeRunMetrics(data || computeCore());
-  render3DTwinFallback(result);
   init3DTwin();
   if(S.threeTwin?.ready){
-    const heat = Math.max(0, Math.min(1, Number(result.power) / 100));
-    const heightScale = 0.2 + Number(result.freq) * 0.05;
-    (S.threeTwin.blocks || []).forEach(block=>{
-      if(block.material?.color) block.material.color.setRGB(heat, 0.2, 1 - heat);
-      block.scale.y = Math.max(0.6, heightScale);
-      block.position.y = (block.userData.baseY || 0.11) + (block.scale.y - 1) * 0.1;
-    });
     applyTwinFrameTo3D({ freq: result.freq, power: result.power, delay: result.delay });
   }
   updateFloorplan(result);
   applyThermalMap();
   highlightPath();
   runDRC();
+  updateSpatialAudio(result);
 }
 
 function animate3DTwin(timeline){
@@ -5265,14 +5410,27 @@ function renderLayout2D(data, targetCanvas) {
   const height=Math.max(host.clientHeight || (wide ? 520 : 260), wide ? 420 : 220);
   canvas.width=width;
   canvas.height=height;
+  if(!wide){
+    const scaleFactor = Math.max(1, (host.clientWidth || width) / 900);
+    canvas.style.transform = `scale(${scaleFactor})`;
+    canvas.style.transformOrigin = 'top left';
+    canvas.style.width = `${width / scaleFactor}px`;
+    canvas.style.height = `${height / scaleFactor}px`;
+  } else {
+    canvas.style.transform = '';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+  }
   const ctx=canvas.getContext('2d');
   if(!ctx) return;
   const result=updateMultiScale(data || computeCore());
-  const samples=gpuSimulate(wide ? 6 : 6);
-  const cols=3, rows=2;
+  const labelSize = Math.max(12, (host.clientWidth || width) * 0.014);
+  const titleSize = Math.max(13, labelSize + 1);
+  const samples=gpuSimulate(wide ? 6 : 4);
+  const cols=wide ? 3 : 2, rows=2;
   const pad=wide ? 28 : 20;
-  const sideRail=wide ? 138 : 96;
-  const footer=wide ? 76 : 64;
+  const sideRail=wide ? 138 : 118;
+  const footer=wide ? 76 : 88;
   const cellW=(width-pad*2-sideRail)/cols;
   const cellH=(height-pad*2-footer)/rows;
   ctx.clearRect(0,0,width,height);
@@ -5301,7 +5459,7 @@ function renderLayout2D(data, targetCanvas) {
   stageLabels.forEach((label, idx)=>{
     const y = pad + 26 + idx * (wide ? 48 : 40);
     ctx.fillStyle='rgba(240,240,255,0.9)';
-    ctx.font=`${wide ? 17 : 14}px DM Mono`;
+    ctx.font=`${wide ? 17 : labelSize}px DM Mono`;
     ctx.fillText(label, pad, y);
     ctx.strokeStyle='rgba(0,245,255,0.35)';
     ctx.lineWidth=2;
@@ -5331,21 +5489,21 @@ function renderLayout2D(data, targetCanvas) {
     ctx.lineTo(x+(cellW-(wide ? 24 : 18))/2, y+cellH-(wide ? 40 : 28));
     ctx.stroke();
     ctx.fillStyle='rgba(240,240,255,0.7)';
-    ctx.font=`${wide ? 18 : 13}px DM Mono`;
+    ctx.font=`${wide ? 18 : titleSize}px DM Mono`;
     ctx.fillText(`BLOCK ${idx+1}`, x+12, y+(wide ? 24 : 18));
   });
   ctx.fillStyle='rgba(255,255,255,0.82)';
-  ctx.font=`${wide ? 20 : 16}px DM Mono`;
+  ctx.font=`${wide ? 20 : Math.max(15, labelSize + 2)}px DM Mono`;
   if(wide){
     ctx.fillText(`Transistor ${S.wn.toFixed(2)}/${S.wp.toFixed(2)}`, pad, height-22);
     ctx.fillText(`Gate ${result.delay.toFixed(2)} ps`, pad + 270, height-22);
     ctx.fillText(`Block ${result.freq.toFixed(2)} GHz`, pad + 520, height-22);
     ctx.fillText(`Chip ${result.power.toFixed(2)} mW`, pad + 790, height-22);
   } else {
-    ctx.fillText(`Transistor ${S.wn.toFixed(2)}/${S.wp.toFixed(2)}`, pad, height-18);
-    ctx.fillText(`Gate ${result.delay.toFixed(2)} ps`, pad + 200, height-18);
-    ctx.fillText(`Block ${result.freq.toFixed(2)} GHz`, pad + 390, height-18);
-    ctx.fillText(`Chip ${result.power.toFixed(2)} mW`, pad + 590, height-18);
+    ctx.fillText(`Transistor ${S.wn.toFixed(2)}/${S.wp.toFixed(2)}`, pad, height-48);
+    ctx.fillText(`Gate ${result.delay.toFixed(2)} ps`, pad, height-26);
+    ctx.fillText(`Block ${result.freq.toFixed(2)} GHz`, pad + 250, height-48);
+    ctx.fillText(`Chip ${result.power.toFixed(2)} mW`, pad + 250, height-26);
   }
 }
 
@@ -6761,7 +6919,11 @@ function logout(){
 // ═══════════════════════════════════════════════════
 function showPanel(id){
     if(id==='ada') id='optimizer';
+    if(id==='3d'){
+      S.lastPanelBefore3D = S.currentPanel && S.currentPanel !== '3d' ? S.currentPanel : (S.lastPanelBefore3D || 'dashboard');
+    }
     S.currentPanel=id;
+    if(id!=='3d') showTab();
     document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
     document.querySelectorAll('.nav-i').forEach(n=>n.classList.remove('on'));
   const p=document.getElementById('panel-'+id);if(p)p.classList.add('on');
@@ -6789,8 +6951,12 @@ function showPanel(id){
     if(id==='optimizer' && S.stale.optimizer) runADA();
     if(id==='twin' && S.stale.twin) runTwin();
   if(id==='3d'){
-    update3DPanelMeta();
-    render3D();
+    setVisualizerContext('twin');
+    showTab('tab-3d');
+    init3DTwin();
+    update3DTwin(lastResult || computeCore());
+    persistWorkspace();
+    return;
   }
   if(id==='xai' && S.stale.xai) runXAI();
   if(id==='payment') updatePaymentSummary();
@@ -6917,47 +7083,22 @@ function computeCore(wn, wp, vdd, temp, cl_fF, corner, node_nm, matKey) {
       state.material ?? currentMaterial
     );
   }
-  wn = wn !== undefined ? wn : S.wn;
-  wp = wp !== undefined ? wp : S.wp;
-  vdd = vdd !== undefined ? vdd : S.vdd;
-  temp = temp !== undefined ? temp : S.temp;
-  cl_fF = cl_fF !== undefined ? cl_fF : S.cl;
-  corner = corner || S.corner;
-  node_nm = node_nm || S.techNode;
-  // Use cmos() for the physics (production engine from index.html)
-  const r = cmos(wn, wp, vdd, temp, cl_fF, corner, node_nm);
-  // Apply material performance factor on top
-  const mat = MATERIAL_DB[matKey || currentMaterial] || MATERIAL_DB.silicon;
-  const perfScale = mat.perf || 1.0;
-  let freq = Math.min(+(r.freq * perfScale).toFixed(4), 500);
-  let power = Math.min(+(r.power * (1 + (mat.leakScale||1)*0.05)).toFixed(4), 500);
-  let delay = r.delay;
-
-  // Apply simulation mode corrections
-  const simMode = S.simMode || 'classical';
-  if(simMode === 'ai'){
-    const seed = stableHash([String(wn),String(wp),String(vdd),String(temp),'ai']);
-    const aiGain = 0.97 + seededUnit(seed,99)*0.06;
-    const aiPowerCorr = 0.98 + seededUnit(seed,100)*0.04;
-    freq = +(freq * aiGain).toFixed(4);
-    power = +(power * aiPowerCorr).toFixed(4);
-    delay = +(delay / aiGain).toFixed(4);
-  } else if(simMode === 'quantum'){
-    const tn = node_nm;
-    const hbar = 1.055e-34, m_eff = 0.19*9.11e-31, phi_b = 3.15*1.6e-19;
-    const t_ox = tn * 1.2e-9;
-    const tunnelProb = Math.exp(-2*Math.sqrt(2*m_eff*phi_b)*t_ox/hbar);
-    const tunnelPenalty = Math.min(0.15, tunnelProb*1e8*0.002);
-    const Lg = tn*0.7e-9, meanFreePath = 30e-9*(tn/28);
-    const ballisticBoost = Math.min(1.25, 1 + meanFreePath/(Lg*2));
-    const qConfineLoss = Math.max(0.92, 1-(28-tn)*0.002);
-    freq = +(freq * ballisticBoost * qConfineLoss * (1-tunnelPenalty)).toFixed(4);
-    power = +(power * (1 + tunnelPenalty*2)).toFixed(4);
-    delay = +(delay / (ballisticBoost * qConfineLoss)).toFixed(4);
-  }
-
+  wn = Math.max(0.1, wn !== undefined ? Number(wn) : Number(S.wn));
+  wp = Math.max(0.1, wp !== undefined ? Number(wp) : Number(S.wp));
+  vdd = Math.min(2.0, Math.max(0.5, vdd !== undefined ? Number(vdd) : Number(S.vdd)));
+  temp = temp !== undefined ? Number(temp) : Number(S.temp);
+  cl_fF = Math.max(0.1, cl_fF !== undefined ? Number(cl_fF) : Number(S.cl));
+  const mobility = 200;
+  const Cox = 1e-3;
+  const drive = mobility * Cox * (wn / wp) * vdd;
+  const freqRaw = Math.min(5, drive / (cl_fF * 10));
+  const powerRaw = (vdd * vdd) * freqRaw * cl_fF * 0.05;
+  const delayRaw = (1 / (freqRaw + 0.1)) * 50;
+  const tempFactor = 1 + (temp - 27) * 0.005;
+  const freq = +(freqRaw / tempFactor).toFixed(4);
+  const power = +(powerRaw * tempFactor).toFixed(4);
+  const delay = +(delayRaw * tempFactor).toFixed(4);
   return {
-    ...r,
     freq,
     power,
     delay,
